@@ -17,7 +17,8 @@
 
 package io.bazel.kotlin.builder.cmd
 
-import io.bazel.kotlin.builder.DaggerJdepsMergerComponent
+import io.bazel.kotlin.builder.tasks.MergeJdeps
+import io.bazel.kotlin.builder.tasks.jvm.JdepsMerger
 import io.bazel.worker.Worker
 import kotlin.system.exitProcess
 
@@ -26,7 +27,7 @@ object MergeJdeps {
   fun main(args: Array<String>) {
     Worker
       .from(args.toList()) {
-        start(DaggerJdepsMergerComponent.builder().build().work())
+        start(MergeJdeps(JdepsMerger()))
       }.run(::exitProcess)
   }
 }
