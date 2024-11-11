@@ -55,9 +55,6 @@ bazel test //...:all || fail "tests failed"
 # build release
 bazel build //:rules_kotlin_release || fail "release archive failed"
 
-# unpack to for repository overriding
-ARCHIVE_DIR="$TMPDIR/rules_kotlin_release"
-
 RELEASE_ARCHIVE=$(realpath bazel-bin/rules_kotlin_release.tgz)
 
 shasum -a 256 bazel-bin/rules_kotlin_release.tgz >bazel-bin/rules_kotlin_release.tgz.sha256
@@ -73,10 +70,6 @@ for ex in examples/*/; do
     ) || fail "$ex failed to build"
   fi
 done
-
-# clean up
-rm -rf $ARCHIVE_DIR
-
 
 echo "Release artifact is good:"
 echo "    bazel-bin/rules_kotlin_release.tgz"
