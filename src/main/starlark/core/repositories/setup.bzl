@@ -35,8 +35,8 @@ def kt_configure():
         artifacts = [
             "com.google.code.findbugs:jsr305:3.0.2",
             "junit:junit:4.13-beta-3",
-            "com.google.protobuf:protobuf-java:3.6.0",
-            "com.google.protobuf:protobuf-java-util:3.6.0",
+            "com.google.protobuf:protobuf-java:4.27.2",
+            "com.google.protobuf:protobuf-java-util:4.27.2",
             "com.google.guava:guava:27.1-jre",
             "com.google.truth:truth:0.45",
             "com.google.auto.service:auto-service:1.0.1",

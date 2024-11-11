@@ -35,16 +35,8 @@ versions = struct(
     SKYLIB_SHA = "66ffd9315665bfaafc96b52278f57c7e2dd09f5ede279ea6d39b2be471e7e3aa",
     PROTOBUF_VERSION = "3.11.3",
     PROTOBUF_SHA = "cf754718b0aa945b00550ed7962ddc167167bd922b842199eeb6505e6f344852",
-    RULES_JVM_EXTERNAL_TAG = "5.3",
-    RULES_JVM_EXTERNAL_SHA = "d31e369b854322ca5098ea12c69d7175ded971435e55c18dd9dd5f29cc5249ac",
-    RULES_PROTO = version(
-        version = "5.3.0-21.7",
-        sha256 = "dc3fb206a2cb3441b485eb1e423165b231235a1ea9b031b4433cf7bc1fa460dd",
-        strip_prefix_template = "rules_proto-{version}",
-        url_templates = [
-            "https://github.com/bazelbuild/rules_proto/archive/refs/tags/{version}.tar.gz",
-        ],
-    ),
+    RULES_JVM_EXTERNAL_TAG = "6.4",
+    RULES_JVM_EXTERNAL_SHA = "85776be6d8fe64abf26f463a8e12cd4c15be927348397180a01693610da7ec90",
     IO_BAZEL_STARDOC = version(
         version = "0.5.6",
         sha256 = "dfbc364aaec143df5e6c52faf1f1166775a5b4408243f445f44b661cfdc3134f",
@@ -118,12 +110,12 @@ versions = struct(
         sha256 = "eb7db63ed826567b2ceb1ec53d6b729e01636f72c9f5dfb6d2dfe55ad69d1d2a",
     ),
     RULES_LICENSE = version(
-        version = "0.0.3",
+        version = "1.0.0",
         url_templates = [
             "https://mirror.bazel.build/github.com/bazelbuild/rules_license/releases/download/{version}/rules_license-{version}.tar.gz",
             "https://github.com/bazelbuild/rules_license/releases/download/{version}/rules_license-{version}.tar.gz",
         ],
-        sha256 = None,
+        sha256 = "26d4021f6898e23b82ef953078389dd49ac2b5618ac564ade4ef87cced147b38",
     ),
     RULES_TESTING = version(
         version = "0.5.0",
