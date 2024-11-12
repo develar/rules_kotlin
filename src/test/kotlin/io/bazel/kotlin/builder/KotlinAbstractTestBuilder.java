@@ -25,7 +25,6 @@ import io.bazel.kotlin.model.Platform;
 import io.bazel.kotlin.model.RuleKind;
 
 import java.io.*;
-import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -227,14 +226,8 @@ abstract class KotlinAbstractTestBuilder<T> {
     }
 
     static KotlinToolchain toolchainForTest() {
-        FileSystem fd = FileSystems.getDefault();
-        Path javaHome = fd.getPath(System.getProperty("java.home"));
-        if (javaHome.endsWith(fd.getPath("jre"))) {
-            javaHome = javaHome.getParent();
-        }
         return KotlinToolchain.createToolchain(
-                javaHome,
-                new File(Deps.Dep.fromLabel("//kotlin/compiler:kotlin-compiler").singleCompileJar()),
+          new File(Deps.Dep.fromLabel("//kotlin/compiler:kotlin-compiler").singleCompileJar()),
                 new File(Deps.Dep.fromLabel("//src/main/kotlin/io/bazel/kotlin/compiler:compiler.jar").singleCompileJar()),
                 new File(Deps.Dep.fromLabel("//kotlin/compiler:jvm-abi-gen").singleCompileJar()),
                 new File(Deps.Dep.fromLabel("//src/main/kotlin:skip-code-gen").singleCompileJar()),

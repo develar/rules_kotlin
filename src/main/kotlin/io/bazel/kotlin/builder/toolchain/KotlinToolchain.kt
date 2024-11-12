@@ -17,17 +17,11 @@
 package io.bazel.kotlin.builder.toolchain
 
 import io.bazel.kotlin.builder.utils.BazelRunFiles
-import io.bazel.kotlin.builder.utils.resolveVerified
 import io.bazel.kotlin.builder.utils.verified
-import io.bazel.kotlin.builder.utils.verifiedPath
-import org.jetbrains.kotlin.preloading.ClassPreloadingUtils
-import org.jetbrains.kotlin.preloading.Preloader
 import java.io.File
 import java.io.PrintStream
 import java.lang.reflect.Method
-import java.nio.file.FileSystems
-import java.nio.file.Path
-import java.nio.file.Paths
+import java.net.URLClassLoader
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -125,23 +119,11 @@ class KotlinToolchain private constructor(
         ).toPath()
     }
 
-    private val JAVA_HOME by lazy {
-      FileSystems
-        .getDefault()
-        .getPath(System.getProperty("java.home"))
-        .let { path ->
-          path.takeIf { !it.endsWith(Paths.get("jre")) } ?: path.parent
-        }.verifiedPath()
-    }
-
     internal val NO_ARGS = arrayOf<Any>()
-
-    private val isJdk9OrNewer = !System.getProperty("java.version").startsWith("1.")
 
     @JvmStatic
     fun createToolchain(): KotlinToolchain =
       createToolchain(
-        JAVA_HOME,
         KOTLINC.verified().absoluteFile,
         COMPILER.verified().absoluteFile,
         JVM_ABI_PLUGIN.verified().absoluteFile,
@@ -157,7 +139,6 @@ class KotlinToolchain private constructor(
 
     @JvmStatic
     fun createToolchain(
-      javaHome: Path,
       kotlinc: File,
       compiler: File,
       jvmAbiGenFile: File,
@@ -171,7 +152,7 @@ class KotlinToolchain private constructor(
       kotlinxSerializationJsonJvm: File,
     ): KotlinToolchain =
       KotlinToolchain(
-        listOf(
+        baseJars = listOf(
           kotlinc,
           compiler,
           // plugins *must* be preloaded. Not doing so causes class conflicts
@@ -186,65 +167,40 @@ class KotlinToolchain private constructor(
           kotlinxSerializationJson,
           kotlinxSerializationJsonJvm,
         ),
-        jvmAbiGen =
-          CompilerPlugin(
-            jvmAbiGenFile.path,
-            "org.jetbrains.kotlin.jvm.abi",
-          ),
-        skipCodeGen =
-          CompilerPlugin(
-            skipCodeGenFile.path,
-            "io.bazel.kotlin.plugin.SkipCodeGen",
-          ),
-        jdepsGen =
-          CompilerPlugin(
-            jdepsGenFile.path,
-            "io.bazel.kotlin.plugin.jdeps.JDepsGen",
-          ),
-        kapt3Plugin =
-          CompilerPlugin(
-            kaptFile.path,
-            "org.jetbrains.kotlin.kapt3",
-          ),
-        kspSymbolProcessingApi =
-          CompilerPlugin(
-            kspSymbolProcessingApi.absolutePath,
-            "com.google.devtools.ksp.symbol-processing",
-          ),
-        kspSymbolProcessingCommandLine =
-          CompilerPlugin(
-            kspSymbolProcessingCommandLine.absolutePath,
-            "com.google.devtools.ksp.symbol-processing",
-          ),
+        jvmAbiGen = CompilerPlugin(
+          jvmAbiGenFile.path,
+          "org.jetbrains.kotlin.jvm.abi",
+        ),
+        skipCodeGen = CompilerPlugin(
+          skipCodeGenFile.path,
+          "io.bazel.kotlin.plugin.SkipCodeGen",
+        ),
+        jdepsGen = CompilerPlugin(
+          jdepsGenFile.path,
+          "io.bazel.kotlin.plugin.jdeps.JDepsGen",
+        ),
+        kapt3Plugin = CompilerPlugin(
+          kaptFile.path,
+          "org.jetbrains.kotlin.kapt3",
+        ),
+        kspSymbolProcessingApi = CompilerPlugin(
+          kspSymbolProcessingApi.absolutePath,
+          "com.google.devtools.ksp.symbol-processing",
+        ),
+        kspSymbolProcessingCommandLine = CompilerPlugin(
+          kspSymbolProcessingCommandLine.absolutePath,
+          "com.google.devtools.ksp.symbol-processing",
+        ),
       )
   }
 
-  private fun createClassLoader(
-    javaHome: Path,
-    baseJars: List<File>,
-    classLoader: ClassLoader = ClassLoader.getSystemClassLoader(),
-  ): ClassLoader =
-    runCatching {
-      ClassPreloadingUtils.preloadClasses(
-        mutableListOf<File>().also {
-          it += baseJars
-          if (!isJdk9OrNewer) {
-            it += javaHome.resolveVerified("lib", "tools.jar")
-          }
-        },
-        Preloader.DEFAULT_CLASS_NUMBER_ESTIMATE,
-        classLoader,
-        null,
-      )
-    }.onFailure {
-      throw RuntimeException("$javaHome, $baseJars", it)
-    }.getOrThrow()
-
   val classLoader by lazy {
-    createClassLoader(
-      JAVA_HOME,
-      baseJars,
-    )
+    runCatching {
+      // not system, but platform as parent - we should not include app classpath, only platform (JDK)
+      URLClassLoader(baseJars.map { it.toURI().toURL() }.toTypedArray(), ClassLoader.getPlatformClassLoader())
+    }.onFailure<URLClassLoader> {
+      throw RuntimeException("$baseJars", it)
+    }.getOrThrow()
   }
 
   fun toolchainWithReflect(kotlinReflect: File? = null): KotlinToolchain =
