@@ -23,7 +23,6 @@ import com.google.devtools.build.lib.worker.WorkRequestHandler.WorkRequestHandle
 import com.google.devtools.build.lib.worker.WorkerProtocol.WorkRequest
 import java.io.IOException
 import java.io.PrintWriter
-import java.time.Duration
 
 /**
  * PersistentWorker satisfies Bazel persistent worker protocol for executing work.
@@ -46,7 +45,7 @@ class PersistentWorker : Worker {
             },
             realStdErr,
             ProtoWorkerMessageProcessor(System.`in`, System.out),
-          ).setCpuUsageBeforeGc(Duration.ofSeconds(10)).build()
+          ).build()
         workerHandler.processRequests()
       } catch (e: IOException) {
         this.error(e, { "Unknown IO exception" })
