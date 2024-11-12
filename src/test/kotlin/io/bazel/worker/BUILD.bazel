@@ -27,6 +27,14 @@ kt_jvm_test(
 kt_jvm_library(
     name = "WorkerEnvironment",
     srcs = ["WorkerEnvironment.kt"],
+    deps = [
+        ":worker_protocol_java_proto",
+    ],
+)
+
+java_proto_library(
+  name = "worker_protocol_java_proto",
+  deps = ["@bazel_worker_api//:worker_protocol_proto"],
 )
 
 kt_jvm_test(
