@@ -139,7 +139,8 @@ open class JarHelper internal constructor(
    * detected and their names automatically '/' suffixed.
    */
   @Throws(IOException::class)
-  protected fun JarOutputStream.copyEntry(
+  protected fun writeEntry(
+    output: JarOutputStream,
     name: String,
     path: Path,
   ) {
@@ -172,7 +173,7 @@ open class JarHelper internal constructor(
         if (size == 0L) {
           outEntry.method = JarEntry.STORED
           outEntry.crc = 0
-          putNextEntry(outEntry)
+          output.putNextEntry(outEntry)
         } else {
           outEntry.method = storageMethod
           if (storageMethod == JarEntry.STORED) {
@@ -184,14 +185,14 @@ open class JarHelper internal constructor(
             val crc = CRC32()
             crc.update(bytes)
             outEntry.crc = crc.value
-            putNextEntry(outEntry)
-            write(bytes)
+            output.putNextEntry(outEntry)
+            output.write(bytes)
           } else {
-            putNextEntry(outEntry)
-            Files.copy(path, this)
+            output.putNextEntry(outEntry)
+            Files.copy(path, output)
           }
         }
-        closeEntry()
+        output.closeEntry()
       }
     }
   }

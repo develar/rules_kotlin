@@ -41,7 +41,7 @@ import java.nio.file.Files.walk
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.nio.file.StandardCopyOption
-import java.util.Base64
+import java.util.*
 import java.util.stream.Collectors.toList
 import java.util.stream.Stream
 import kotlin.io.path.exists
@@ -338,13 +338,13 @@ private fun kspKotlinToolchainVersion(version: String): String {
  */
 internal fun JvmCompilationTask.createOutputJar() =
   JarCreator(
-    path = Paths.get(outputs.jar),
+    path = Path.of(outputs.jar),
     normalize = true,
     verbose = false,
   ).also {
-    it.addDirectory(Paths.get(directories.classes))
-    it.addDirectory(Paths.get(directories.javaClasses))
-    it.addDirectory(Paths.get(directories.generatedClasses))
+    it.addDirectory(Path.of(directories.classes))
+    it.addDirectory(Path.of(directories.javaClasses))
+    it.addDirectory(Path.of(directories.generatedClasses))
     it.setJarOwner(info.label, info.bazelRuleKind)
     it.execute()
   }
@@ -354,12 +354,12 @@ internal fun JvmCompilationTask.createOutputJar() =
  */
 internal fun JvmCompilationTask.createAbiJar() =
   JarCreator(
-    path = Paths.get(outputs.abijar),
+    path = Path.of(outputs.abijar),
     normalize = true,
     verbose = false,
   ).also {
-    it.addDirectory(Paths.get(directories.abiClasses))
-    it.addDirectory(Paths.get(directories.generatedClasses))
+    it.addDirectory(Path.of(directories.abiClasses))
+    it.addDirectory(Path.of(directories.generatedClasses))
     it.setJarOwner(info.label, info.bazelRuleKind)
     it.execute()
   }
@@ -369,11 +369,11 @@ internal fun JvmCompilationTask.createAbiJar() =
  */
 internal fun JvmCompilationTask.createGeneratedJavaSrcJar() {
   JarCreator(
-    path = Paths.get(outputs.generatedJavaSrcJar),
+    path = Path.of(outputs.generatedJavaSrcJar),
     normalize = true,
     verbose = false,
   ).also {
-    it.addDirectory(Paths.get(directories.generatedJavaSources))
+    it.addDirectory(Path.of(directories.generatedJavaSources))
     it.setJarOwner(info.label, info.bazelRuleKind)
     it.execute()
   }
