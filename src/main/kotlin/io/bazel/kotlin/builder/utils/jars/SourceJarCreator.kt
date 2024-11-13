@@ -15,10 +15,9 @@
  */
 package io.bazel.kotlin.builder.utils.jars
 
-import java.nio.charset.Charset
 import java.nio.file.Files
 import java.nio.file.Path
-import java.util.TreeMap
+import java.util.*
 import java.util.jar.JarFile
 import java.util.jar.JarOutputStream
 import java.util.regex.Pattern
@@ -27,10 +26,7 @@ import java.util.stream.Stream
 /**
  * Source jar packager for JavaLike files. The placement is discovered from the package entry.
  */
-class SourceJarCreator(
-  path: Path,
-  verbose: Boolean = false,
-) : JarHelper(path, normalize = true, verbose = verbose) {
+class SourceJarCreator(private val jarFile: Path) {
   companion object {
     private const val BL = """\p{Blank}*"""
     private const val COM_BL = """$BL(?:/\*[^\n]*\*/$BL)*"""
@@ -47,8 +43,8 @@ class SourceJarCreator(
 
   sealed class Entry {
     class File(
-      val path: Path,
-      val content: ByteArray,
+      @JvmField val path: Path,
+      @JvmField val content: ByteArray,
     ) : Entry() {
       override fun toString(): String = "File $path"
     }
@@ -132,9 +128,6 @@ class SourceJarCreator(
    * Add a single source jar
    */
   private fun addSourceJar(path: Path) {
-    if (verbose) {
-      System.err.println("adding source jar: $path")
-    }
     JarFile(path.toFile()).use { jar ->
       for (entry in jar.entries()) {
         if (!entry.isDirectory) {
@@ -155,35 +148,34 @@ class SourceJarCreator(
   private fun addJavaLikeSourceFile(sourceFile: Path) {
     val bytes = Files.readAllBytes(sourceFile)
     filenameHelper.getFilenameOrDefer(sourceFile, bytes)?.also {
-      addEntry(it, sourceFile, bytes)
+      addEntry(name = it, path = sourceFile, bytes = bytes)
     }
   }
 
   fun execute() {
-    if (verbose) {
-      System.err.println("creating source jar file: $jarPath")
-    }
     filenameHelper.visitDeferredEntries { path, jarFilename, bytes ->
       if (jarFilename == null) {
-        if (verbose) {
-          val body = bytes.toString(Charset.defaultCharset())
-          System.err.println("""could not determine jar entry name for $path. Body:\n$body}""")
-        } else {
-          // if not verbose silently add files at the root.
-          addEntry(path.fileName.toString(), path, bytes)
-        }
+        addEntry(name = path.fileName.toString(), path = path, bytes = bytes)
       } else {
         System.err.println("adding deferred source file $path -> $jarFilename")
         addEntry(jarFilename, path, bytes)
       }
     }
-    Files.newOutputStream(jarPath).use {
+    Files.newOutputStream(jarFile).use {
       JarOutputStream(it).use { out ->
         for ((key, value) in entries) {
           try {
             when (value) {
-              is Entry.File -> out.copyEntry(key, value.path, value.content)
-              is Entry.Directory -> out.copyEntry(key)
+              is Entry.File -> writeEntry(
+                output = out,
+                name = key,
+                data = value.content
+              )
+              is Entry.Directory -> writeEntry(
+                output = out,
+                name = key,
+                data = EMPTY_BYTEARRAY,
+              )
             }
           } catch (throwable: Throwable) {
             throw RuntimeException("could not copy JarEntry $key $value", throwable)
@@ -198,14 +190,12 @@ class SourceJarCreator(
     path: Path,
     bytes: ByteArray,
   ) {
-    name.split("/").also {
+    name.split('/').also {
       if (it.size >= 2) {
         for (i in ((it.size - 1) downTo 1)) {
           val dirName = it.subList(0, i).joinToString("/", postfix = "/")
           if (entries.putIfAbsent(dirName, Entry.Directory) != null) {
             break
-          } else if (verbose) {
-            System.err.println("adding directory: $dirName")
           }
         }
       }

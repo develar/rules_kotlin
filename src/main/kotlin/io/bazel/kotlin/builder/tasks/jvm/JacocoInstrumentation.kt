@@ -5,11 +5,7 @@ import io.bazel.kotlin.builder.utils.jars.JarCreator
 import io.bazel.kotlin.model.JvmCompilationTask
 import org.jacoco.core.instr.Instrumenter
 import org.jacoco.core.runtime.OfflineInstrumentationAccessGenerator
-import java.nio.file.FileVisitResult
-import java.nio.file.Files
-import java.nio.file.Path
-import java.nio.file.Paths
-import java.nio.file.SimpleFileVisitor
+import java.nio.file.*
 import java.nio.file.attribute.BasicFileAttributes
 
 internal fun JvmCompilationTask.createCoverageInstrumentedJar() {
@@ -18,17 +14,17 @@ internal fun JvmCompilationTask.createCoverageInstrumentedJar() {
 
   val instr = Instrumenter(OfflineInstrumentationAccessGenerator())
 
-  instrumentRecursively(instr, instrumentedClassesDirectory, Paths.get(directories.classes))
-  instrumentRecursively(instr, instrumentedClassesDirectory, Paths.get(directories.javaClasses))
+  instrumentRecursively(instr, instrumentedClassesDirectory, Path.of(directories.classes))
+  instrumentRecursively(instr, instrumentedClassesDirectory, Path.of(directories.javaClasses))
   instrumentRecursively(
     instr,
     instrumentedClassesDirectory,
-    Paths.get(directories.generatedClasses),
+    Path.of(directories.generatedClasses),
   )
 
   val pathsForCoverage =
     instrumentedClassesDirectory.resolve(
-      "${Paths.get(outputs.jar).fileName}-paths-for-coverage.txt",
+      "${Path.of(outputs.jar).fileName}-paths-for-coverage.txt",
     )
   Files.write(
     pathsForCoverage,
@@ -36,16 +32,14 @@ internal fun JvmCompilationTask.createCoverageInstrumentedJar() {
   )
 
   JarCreator(
-    path = Paths.get(outputs.jar),
-    normalize = true,
-    verbose = false,
-  ).also {
-    it.addDirectory(Paths.get(directories.classes))
-    it.addDirectory(Paths.get(directories.javaClasses))
-    it.addDirectory(Paths.get(directories.generatedClasses))
+    path = Path.of(outputs.jar),
+    targetLabel = info.label,
+    injectingRuleKind = info.bazelRuleKind,
+  ).use {
+    it.addDirectory(Path.of(directories.classes))
+    it.addDirectory(Path.of(directories.javaClasses))
+    it.addDirectory(Path.of(directories.generatedClasses))
     it.addDirectory(instrumentedClassesDirectory)
-    it.setJarOwner(info.label, info.bazelRuleKind)
-    it.execute()
   }
 }
 
@@ -64,7 +58,7 @@ private fun instrumentRecursively(
           return FileVisitResult.CONTINUE
         }
 
-        val absoluteUninstrumentedCopy = Paths.get("$file.uninstrumented")
+        val absoluteUninstrumentedCopy = Path.of("$file.uninstrumented")
         val uninstrumentedCopy = metadataDir.resolve(root.relativize(absoluteUninstrumentedCopy))
 
         Files.createDirectories(uninstrumentedCopy.parent)

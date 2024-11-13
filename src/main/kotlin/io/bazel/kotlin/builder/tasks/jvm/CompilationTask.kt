@@ -26,7 +26,6 @@ import io.bazel.kotlin.builder.toolchain.KotlinToolchain
 import io.bazel.kotlin.builder.utils.IS_JVM_SOURCE_FILE
 import io.bazel.kotlin.builder.utils.bazelRuleKind
 import io.bazel.kotlin.builder.utils.jars.JarCreator
-import io.bazel.kotlin.builder.utils.jars.JarHelper.Companion.MANIFEST_DIR
 import io.bazel.kotlin.builder.utils.jars.SourceJarExtractor
 import io.bazel.kotlin.builder.utils.partitionJvmSources
 import io.bazel.kotlin.model.JvmCompilationTask
@@ -49,6 +48,8 @@ import kotlin.io.path.exists
 private const val SOURCE_JARS_DIR = "_srcjars"
 private const val API_VERSION_ARG = "-api-version"
 private const val LANGUAGE_VERSION_ARG = "-language-version"
+
+private const val MANIFEST_DIR = "META-INF/"
 
 fun JvmCompilationTask.codeGenArgs(): CompilationArgs =
   CompilationArgs()
@@ -336,18 +337,17 @@ private fun kspKotlinToolchainVersion(version: String): String {
 /**
  * Produce the primary output jar.
  */
-internal fun JvmCompilationTask.createOutputJar() =
+internal fun JvmCompilationTask.createOutputJar() {
   JarCreator(
     path = Path.of(outputs.jar),
-    normalize = true,
-    verbose = false,
-  ).also {
+    targetLabel = info.label,
+    injectingRuleKind = info.bazelRuleKind,
+  ).use {
     it.addDirectory(Path.of(directories.classes))
     it.addDirectory(Path.of(directories.javaClasses))
     it.addDirectory(Path.of(directories.generatedClasses))
-    it.setJarOwner(info.label, info.bazelRuleKind)
-    it.execute()
   }
+}
 
 /**
  * Produce the primary output jar.
@@ -355,13 +355,11 @@ internal fun JvmCompilationTask.createOutputJar() =
 internal fun JvmCompilationTask.createAbiJar() =
   JarCreator(
     path = Path.of(outputs.abijar),
-    normalize = true,
-    verbose = false,
-  ).also {
+    targetLabel = info.label,
+    injectingRuleKind = info.bazelRuleKind,
+  ).use {
     it.addDirectory(Path.of(directories.abiClasses))
     it.addDirectory(Path.of(directories.generatedClasses))
-    it.setJarOwner(info.label, info.bazelRuleKind)
-    it.execute()
   }
 
 /**
@@ -370,12 +368,10 @@ internal fun JvmCompilationTask.createAbiJar() =
 internal fun JvmCompilationTask.createGeneratedJavaSrcJar() {
   JarCreator(
     path = Path.of(outputs.generatedJavaSrcJar),
-    normalize = true,
-    verbose = false,
-  ).also {
+    targetLabel = info.label,
+    injectingRuleKind = info.bazelRuleKind,
+  ).use {
     it.addDirectory(Path.of(directories.generatedJavaSources))
-    it.setJarOwner(info.label, info.bazelRuleKind)
-    it.execute()
   }
 }
 
@@ -384,13 +380,11 @@ internal fun JvmCompilationTask.createGeneratedJavaSrcJar() {
  */
 internal fun JvmCompilationTask.createGeneratedStubJar() {
   JarCreator(
-    path = Paths.get(outputs.generatedJavaStubJar),
-    normalize = true,
-    verbose = false,
-  ).also {
+    path = Path.of(outputs.generatedJavaStubJar),
+    targetLabel = info.label,
+    injectingRuleKind = info.bazelRuleKind,
+  ).use {
     it.addDirectory(Paths.get(directories.incrementalData))
-    it.setJarOwner(info.label, info.bazelRuleKind)
-    it.execute()
   }
 }
 
@@ -399,26 +393,22 @@ internal fun JvmCompilationTask.createGeneratedStubJar() {
  */
 internal fun JvmCompilationTask.createGeneratedClassJar() {
   JarCreator(
-    path = Paths.get(outputs.generatedClassJar),
-    normalize = true,
-    verbose = false,
-  ).also {
+    path = Path.of(outputs.generatedClassJar),
+    targetLabel = info.label,
+    injectingRuleKind = info.bazelRuleKind,
+  ).use {
     it.addDirectory(Paths.get(directories.generatedClasses))
-    it.setJarOwner(info.label, info.bazelRuleKind)
-    it.execute()
   }
 }
 
 internal fun JvmCompilationTask.createGeneratedKspKotlinSrcJar() {
   JarCreator(
-    path = Paths.get(outputs.generatedKspSrcJar),
-    normalize = true,
-    verbose = false,
-  ).also {
-    it.addDirectory(Paths.get(directories.generatedSources))
-    it.addDirectory(Paths.get(directories.generatedJavaSources))
-    it.setJarOwner(info.label, info.bazelRuleKind)
-    it.execute()
+    path = Path.of(outputs.generatedKspSrcJar),
+    targetLabel = info.label,
+    injectingRuleKind = info.bazelRuleKind,
+  ).use {
+    it.addDirectory(Path.of(directories.generatedSources))
+    it.addDirectory(Path.of(directories.generatedJavaSources))
   }
 }
 

@@ -12,7 +12,7 @@ class JarCreatorTest {
     }
 
     val got = Temporary.directoryFor<JarCreatorTest>().resolve("out.jar").apply {
-      JarCreator(this).use { it.addDirectory(root) }
+      JarCreator(this, targetLabel = "test", injectingRuleKind = "test").use { it.addDirectory(root) }
     }
 
     assertThat(

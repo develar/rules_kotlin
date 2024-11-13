@@ -17,17 +17,19 @@ package io.bazel.kotlin.builder.utils.jars
 
 import java.io.BufferedOutputStream
 import java.io.ByteArrayOutputStream
-import java.io.Closeable
+import java.io.File
 import java.io.IOException
-import java.nio.file.FileVisitResult
 import java.nio.file.Files
+import java.nio.file.NoSuchFileException
 import java.nio.file.Path
-import java.nio.file.SimpleFileVisitor
 import java.nio.file.attribute.BasicFileAttributes
 import java.util.*
 import java.util.jar.Attributes
+import java.util.jar.JarEntry
 import java.util.jar.JarOutputStream
 import java.util.jar.Manifest
+import java.util.zip.CRC32
+import java.util.zip.ZipEntry
 
 /**
  * A class for creating Jar files. Allows normalization of Jar entries by setting their timestamp to
@@ -36,126 +38,99 @@ import java.util.jar.Manifest
 @Suppress("unused")
 class JarCreator(
   path: Path,
-  normalize: Boolean = true,
-  verbose: Boolean = false,
-) : JarHelper(path, normalize, verbose),
-  Closeable {
-  // Map from Jar entry names to files. Use TreeMap so we can establish a canonical order for the
-  // entries regardless in what order they get added.
-  private val jarEntries = TreeMap<String, Path>()
+  private val targetLabel: String,
+  private val injectingRuleKind: String,
+) : AutoCloseable {
+  // map from Jar entry names to files
+  private val jarEntries = HashMap<String, Path>()
   private var mainClass: String? = null
-  private var targetLabel: String? = null
-  private var injectingRuleKind: String? = null
+
+  private val output = JarOutputStream(BufferedOutputStream(Files.newOutputStream(path)))
 
   /**
    * Adds the contents of a directory to the Jar file. All files below this directory will be added
    * to the Jar file using the name relative to the directory as the name for the Jar entry.
    *
-   * @param directory the directory to add to the jar
+   * @param startDir the directory to add to the jar
    */
-  fun addDirectory(directory: Path) {
-    if (!Files.exists(directory)) {
-      throw IllegalArgumentException("directory does not exist: $directory")
+  fun addDirectory(startDir: Path) {
+    val localPrefixLength = startDir.toString().length + 1
+    val dirCandidates = ArrayDeque<Path>()
+    dirCandidates.add(startDir)
+    val tempList = ArrayList<Path>()
+    while (true) {
+      val dir = dirCandidates.pollFirst() ?: break
+      tempList.clear()
+      val dirStream = try {
+        Files.newDirectoryStream(dir)
+      } catch (_: NoSuchFileException) {
+        continue
+      }
+
+      dirStream.use {
+        tempList.addAll(it)
+      }
+
+      tempList.sort()
+      for (file in tempList) {
+        val attributes = Files.readAttributes(file, BasicFileAttributes::class.java)
+        var key = file.toString().substring(localPrefixLength).replace(File.separatorChar, '/')
+        if (attributes.isDirectory) {
+          dirCandidates.add(file)
+          key += "/"
+
+          if (jarEntries.put(key, file) == null) {
+            writeDirEntry(output = output, name = key)
+          }
+        } else
+          if (jarEntries.put(key, file) == null && key != JarHelper.MANIFEST_NAME) {
+            writeEntry(output = output, name = key, path = file, size = attributes.size())
+          }
+      }
     }
-    Files.walkFileTree(
-      directory,
-      object : SimpleFileVisitor<Path>() {
-        @Throws(IOException::class)
-        override fun preVisitDirectory(
-          path: Path,
-          attrs: BasicFileAttributes,
-        ): FileVisitResult {
-          if (path != directory) {
-            // For consistency with legacy behaviour, include entries for directories except for
-            // the root.
-            addEntry(path, isDirectory = true)
-          }
-          return FileVisitResult.CONTINUE
-        }
-
-        @Throws(IOException::class)
-        override fun visitFile(
-          path: Path,
-          attrs: BasicFileAttributes,
-        ): FileVisitResult {
-          addEntry(path, isDirectory = false)
-          return FileVisitResult.CONTINUE
-        }
-
-        fun addEntry(
-          path: Path,
-          isDirectory: Boolean,
-        ) {
-          val sb = StringBuilder()
-          var first = true
-          for (entry in directory.relativize(path)) {
-            if (!first) {
-              // use `/` as the directory separator for jar paths, even on Windows
-              sb.append('/')
-            }
-            sb.append(entry.fileName)
-            first = false
-          }
-          if (isDirectory) {
-            sb.append('/')
-          }
-          jarEntries[sb.toString()] = path
-        }
-      },
-    )
-  }
-
-  fun setJarOwner(
-    targetLabel: String,
-    injectingRuleKind: String,
-  ) {
-    this.targetLabel = targetLabel
-    this.injectingRuleKind = injectingRuleKind
   }
 
   @Throws(IOException::class)
-  private fun manifestContentImpl(manifest: Manifest): ByteArray {
-    val attributes = manifest.mainAttributes
-    attributes[Attributes.Name.MANIFEST_VERSION] = "1.0"
-    val createdBy = Attributes.Name("Created-By")
-    if (attributes.getValue(createdBy) == null) {
-      attributes[createdBy] = "io.bazel.rules.kotlin"
+  private fun manifestContentImpl(existingFile: Path?): ByteArray {
+    val manifest = if (existingFile == null) {
+      Manifest()
+    } else {
+      Files.newInputStream(existingFile).use { Manifest(it) }
     }
+
+    var m = manifest
+    m.mainAttributes[Attributes.Name.MANIFEST_VERSION] = "1.0"
+    m.mainAttributes.putIfAbsent(Attributes.Name("Created-By"), "io.bazel.rules.kotlin")
+
+    val attributes = m.mainAttributes
+
     if (mainClass != null) {
       attributes[Attributes.Name.MAIN_CLASS] = mainClass
     }
-    if (targetLabel != null) {
-      attributes[TARGET_LABEL] = targetLabel
-    }
-    if (injectingRuleKind != null) {
-      attributes[INJECTING_RULE_KIND] = injectingRuleKind
-    }
+    attributes[JarOwner.TARGET_LABEL] = targetLabel
+    attributes[JarOwner.INJECTING_RULE_KIND] = injectingRuleKind
+
     val out = ByteArrayOutputStream()
     manifest.write(out)
     return out.toByteArray()
   }
 
   override fun close() {
-    execute()
-  }
-
-  /**
-   * Executes the creation of the Jar file.
-   *
-   * @throws IOException if the Jar cannot be written or any of the entries cannot be read.
-   */
-  @Throws(IOException::class)
-  fun execute() {
-    Files.newOutputStream(jarPath).use { os ->
-      BufferedOutputStream(os).use { bos ->
-        JarOutputStream(bos).use { out ->
-          // create the manifest entry in the Jar file
-          writeManifestEntry(out, manifestContentImpl(Manifest()))
-          for ((key, value) in jarEntries) {
-            writeEntry(output = out, name = key, path = value)
-          }
-        }
-      }
+    try {
+      // create the manifest entry in the Jar file
+      val content = manifestContentImpl(jarEntries.remove(JarHelper.MANIFEST_NAME))
+      val entry = JarEntry(JarHelper.MANIFEST_NAME)
+      entry.time = JarHelper.DEFAULT_TIMESTAMP
+      entry.size = content.size.toLong()
+      entry.method = ZipEntry.STORED
+      val crc = CRC32()
+      crc.update(content)
+      entry.crc = crc.value
+      output.putNextEntry(entry)
+      output.write(content)
+      output.closeEntry()
+    } finally {
+      output.close()
     }
   }
 }

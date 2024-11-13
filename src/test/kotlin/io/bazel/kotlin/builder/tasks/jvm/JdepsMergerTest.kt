@@ -14,7 +14,8 @@ import io.bazel.worker.WorkerContext
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.JUnit4
-import java.io.*
+import java.io.BufferedInputStream
+import java.io.BufferedOutputStream
 import java.nio.file.Files
 import java.nio.file.Path
 
@@ -44,11 +45,9 @@ class JdepsMergerTest {
     val path = Files.createDirectories(wrkDir.resolve("out")).resolve("lib${label}$suffix.jar")
     JarCreator(
       path = path,
-      normalize = true,
-      verbose = false,
-    ).also {
-      it.setJarOwner(label, "kt_jvm_library")
-      it.execute()
+      targetLabel = label,
+      injectingRuleKind = "kt_jvm_library",
+    ).use {
     }
     return path.toString()
   }

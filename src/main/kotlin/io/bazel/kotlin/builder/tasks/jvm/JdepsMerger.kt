@@ -4,14 +4,10 @@ import com.google.devtools.build.lib.view.proto.Deps
 import io.bazel.kotlin.builder.utils.ArgMap
 import io.bazel.kotlin.builder.utils.ArgMaps
 import io.bazel.kotlin.builder.utils.Flag
-import io.bazel.kotlin.builder.utils.jars.JarHelper.Companion.INJECTING_RULE_KIND
-import io.bazel.kotlin.builder.utils.jars.JarHelper.Companion.TARGET_LABEL
+import io.bazel.kotlin.builder.utils.jars.JarOwner
+import io.bazel.kotlin.builder.utils.jars.JarOwner.Companion.INJECTING_RULE_KIND
 import io.bazel.worker.WorkerContext
-import java.io.BufferedInputStream
-import java.io.BufferedOutputStream
-import java.io.File
-import java.io.IOException
-import java.io.UncheckedIOException
+import java.io.*
 import java.nio.charset.StandardCharsets
 import java.nio.file.FileSystems
 import java.nio.file.Files
@@ -46,7 +42,7 @@ class JdepsMerger {
           val manifest = jarFile.manifest ?: return JarOwner(jarPath)
           val attributes = manifest.mainAttributes
           val label =
-            attributes[TARGET_LABEL] as String?
+            attributes[JarOwner.TARGET_LABEL] as String?
               ?: return JarOwner(jarPath)
           val injectingRuleKind = attributes[INJECTING_RULE_KIND] as String?
           return JarOwner(jarPath, label, injectingRuleKind)
@@ -70,10 +66,10 @@ class JdepsMerger {
 
       val dependencyMap = sortedMapOf<String, Deps.Dependency>()
       inputs.forEach { input ->
-        BufferedInputStream(Paths.get(input).toFile().inputStream()).use {
+        BufferedInputStream(Files.newInputStream(Path.of(input))).use {
           val deps: Deps.Dependencies = Deps.Dependencies.parseFrom(it)
-          deps.getDependencyList().forEach {
-            val dependency = dependencyMap.get(it.path)
+          deps.dependencyList.forEach {
+            val dependency = dependencyMap[it.path]
             // Replace dependency if it has a stronger kind than one we encountered before.
             if (dependency == null || dependency.kind > it.kind) {
               dependencyMap.put(it.path, it)
@@ -134,12 +130,6 @@ class JdepsMerger {
       return 0
     }
   }
-
-  private data class JarOwner(
-    val jar: Path,
-    val label: String? = null,
-    val aspect: String? = null,
-  )
 
   private fun getArgs(args: List<String>): ArgMap {
     check(args.isNotEmpty()) { "expected at least a single arg got: ${args.joinToString(" ")}" }

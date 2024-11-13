@@ -66,32 +66,31 @@ class KotlinJvmTaskExecutor
               context.execute("kotlinc") {
                 if (compileKotlin) {
                   compileKotlin(
-                    context,
-                    compiler,
-                    args =
-                      baseArgs()
-                        .given(outputs.jdeps)
-                        .notEmpty {
-                          plugin(plugins.jdeps) {
-                            flag("output", outputs.jdeps)
-                            flag("target_label", info.label)
-                            inputs.directDependenciesList.forEach {
-                              flag("direct_dependencies", it)
-                            }
-                            flag("strict_kotlin_deps", info.strictKotlinDeps)
+                    context = context,
+                    compiler = compiler,
+                    args = baseArgs()
+                      .given(outputs.jdeps)
+                      .notEmpty {
+                        plugin(plugins.jdeps) {
+                          flag("output", outputs.jdeps)
+                          flag("target_label", info.label)
+                          inputs.directDependenciesList.forEach {
+                            flag("direct_dependencies", it)
                           }
-                        }.given(outputs.jar)
-                        .notEmpty {
-                          append(codeGenArgs())
-                        }.given(outputs.abijar)
-                        .notEmpty {
-                          plugin(plugins.jvmAbiGen) {
-                            flag("outputDir", directories.abiClasses)
-                          }
-                          given(outputs.jar).empty {
-                            plugin(plugins.skipCodeGen)
-                          }
-                        },
+                          flag("strict_kotlin_deps", info.strictKotlinDeps)
+                        }
+                      }.given(outputs.jar)
+                      .notEmpty {
+                        append(codeGenArgs())
+                      }.given(outputs.abijar)
+                      .notEmpty {
+                        plugin(plugins.jvmAbiGen) {
+                          flag("outputDir", directories.abiClasses)
+                        }
+                        given(outputs.jar).empty {
+                          plugin(plugins.skipCodeGen)
+                        }
+                      },
                     printOnFail = false,
                   )
                 } else {
