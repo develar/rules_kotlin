@@ -273,7 +273,6 @@ def _fold_jars_action(ctx, rule_kind, toolchains, output_jar, input_jars, action
     args = ctx.actions.args()
     args.add_all([
         "--normalize",
-        "--compression",
         "--exclude_build_data",
         "--add_missing_directories",
     ])
