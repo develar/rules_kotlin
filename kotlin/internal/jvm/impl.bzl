@@ -137,11 +137,6 @@ def _write_launcher_action(ctx, rjars, main_class, jvm_flags):
     )
     return []
 
-# buildifier: disable=unused-variable
-def _is_source_jar_stub(jar):
-    """Workaround for intellij plugin expecting a source jar"""
-    return jar.path.endswith("third_party/empty.jar")
-
 def _unify_jars(ctx):
     if bool(ctx.attr.jar):
         return struct(class_jar = ctx.file.jar, source_jar = ctx.file.srcjar, ijar = None)
