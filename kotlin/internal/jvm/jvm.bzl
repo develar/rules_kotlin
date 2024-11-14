@@ -297,6 +297,7 @@ _runnable_common_attr = utils.add_dicts(_common_attr, _runnable_implicit_deps, {
     ),
 })
 
+# we cannot use attr.output because it may break compatibility (requesting default output as `.jar` or `-sources.jar`), including IntelliJ IDEA plugin
 _common_outputs = dict(
     jar = "%{name}.jar",
     # The params file, declared here so that validate it can be validated for testing.

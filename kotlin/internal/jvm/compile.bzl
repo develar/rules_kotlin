@@ -638,16 +638,21 @@ def kt_jvm_produce_jar_actions(ctx, rule_kind):
         output_jars.append(_build_resourcejar_action(ctx))
     output_jars.extend(ctx.files.resource_jars)
 
-    # Merge outputs into final runtime jar.
+    # merge outputs into final runtime jar
     output_jar = ctx.actions.declare_file(ctx.label.name + ".jar")
-    _fold_jars_action(
-        ctx,
-        rule_kind = rule_kind,
-        toolchains = toolchains,
-        output_jar = output_jar,
-        action_type = "Runtime",
-        input_jars = output_jars,
-    )
+    if len(output_jars) == 1:
+         ctx.actions.symlink(output = output_jar, target_file = output_jars[0])
+    elif len(output_jars) == 0:
+         ctx.actions.symlink(output = output_jar, target_file = toolchains.kt.empty_jar)
+    else:
+        _fold_jars_action(
+            ctx,
+            rule_kind = rule_kind,
+            toolchains = toolchains,
+            output_jar = output_jar,
+            action_type = "Runtime",
+            input_jars = output_jars,
+        )
 
     source_jar = java_common.pack_sources(
         ctx.actions,
