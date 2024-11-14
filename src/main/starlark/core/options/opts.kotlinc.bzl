@@ -334,6 +334,16 @@ _KOPTS_ALL = {
             True: ["-Xuse-fir-lt"],
         },
     ),
+    "x_allow_kotlin_package": struct(
+        args = dict(
+            default = False,
+            doc = "",
+        ),
+        type = attr.bool,
+        value_to_flag = {
+            True: ["-Xallow-kotlin-package"],
+        },
+    ),
     "x_no_source_debug_extension": struct(
         args = dict(
             default = False,
