@@ -37,7 +37,7 @@ load("//third_party:jarjar.bzl", "jarjar_action")
 def _is_absolute(path):
     return path.startswith("/") or (len(path) > 2 and path[1] == ":")
 
-def _make_providers(ctx, providers, transitive_files = depset(order = "default"), *additional_providers):
+def _make_providers(ctx, providers, transitive_files = depset(order = "default")):
     files = [ctx.outputs.jar]
     if providers.java.outputs.jdeps:
         files.append(providers.java.outputs.jdeps)
@@ -56,7 +56,7 @@ def _make_providers(ctx, providers, transitive_files = depset(order = "default")
                 collect_default = True,
             ),
         ),
-    ] + list(additional_providers)
+    ]
 
 def _write_launcher_action(ctx, rjars, main_class, jvm_flags):
     """Macro that writes out a launcher script shell script.
@@ -298,6 +298,7 @@ def kt_jvm_junit_test_impl(ctx):
         ] + jvm_flags,
     )
 
+    # adds common test variables, including TEST_WORKSPACE
     return _make_providers(
         ctx,
         providers,
@@ -305,10 +306,8 @@ def kt_jvm_junit_test_impl(ctx):
             order = "default",
             transitive = [runtime_jars, depset(coverage_runfiles), depset(coverage_metadata)],
             direct = ctx.files._java_runtime,
-        ),
-        # adds common test variables, including TEST_WORKSPACE.
-        testing.TestEnvironment(environment = ctx.attr.env),
-    )
+        )
+    ) + [testing.TestEnvironment(environment = ctx.attr.env)]
 
 _KtCompilerPluginClasspathInfo = provider(
     fields = {

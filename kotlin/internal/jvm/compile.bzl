@@ -779,6 +779,8 @@ def _run_kt_java_builder_actions(
         generated_ksp_src_jars.append(ksp_outputs.ksp_generated_class_jar)
 
     java_infos = []
+    outputs = None
+    kt_compile_jar = None
 
     # Build Kotlin
     if has_kt_sources:
