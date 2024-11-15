@@ -26,6 +26,7 @@ load(
     "//kotlin/internal/jvm:compile.bzl",
     "export_only_providers",
     _kt_jvm_produce_jar_actions = "kt_jvm_produce_jar_actions",
+    _kt_jvm_produce_jar_resources_actions = "kt_jvm_produce_jar_resources_actions",
 )
 load(
     "//kotlin/internal/utils:utils.bzl",
@@ -226,6 +227,14 @@ def kt_jvm_library_impl(ctx):
             attr = ctx.attr,
         ),
     )
+
+def jvm_resources_impl(ctx):
+   return [
+       _kt_jvm_produce_jar_resources_actions(ctx, "jvm_resources"),
+       DefaultInfo(
+           files = depset([ctx.outputs.jar]),
+       ),
+   ]
 
 def kt_jvm_binary_impl(ctx):
     providers = _kt_jvm_produce_jar_actions(ctx, "kt_jvm_binary")

@@ -717,6 +717,58 @@ def kt_jvm_produce_jar_actions(ctx, rule_kind):
         ),
     )
 
+def kt_jvm_produce_jar_resources_actions(ctx, rule_kind):
+    """This macro sets up a compile action for a JVM resources jar.
+
+    Args:
+        ctx: Invoking rule ctx, used for attr, actions, and label.
+        rule_kind: The rule kind --e.g., `jvm_resources`.
+    Returns:
+        A struct containing the providers JavaInfo (`java`)
+    """
+
+    output_jar = ctx.actions.declare_file(ctx.label.name + ".jar")
+
+    res_cmd = ""
+    for f in ctx.files.resources:
+        target_path = ctx.expand_location(f.owner.name)
+
+        resource_strip_prefix = ctx.attr.resource_strip_prefix
+        if resource_strip_prefix:
+            if not target_path.startswith(resource_strip_prefix):
+                fail("Resource file " + target_path + " is not under the specified prefix to strip (file.root=" + f.root.path + ")")
+
+            target_path = target_path[len(resource_strip_prefix):]
+
+        if target_path[0] == "/":
+            target_path = target_path[1:]
+
+        res_cmd += target_path + "=" + f.path + "\n"
+
+    zipper_args = ctx.actions.declare_file("%s_resources_zipper_args" % ctx.label.name)
+    ctx.actions.write(zipper_args, res_cmd)
+
+    ctx.actions.run_shell(
+        mnemonic = "KotlinZipResourceJar",
+        inputs = ctx.files.resources + [zipper_args],
+        tools = [ctx.executable._zipper],
+        outputs = [output_jar],
+        command = "{zipper} c {output_jar} @{path}".format(
+            path = zipper_args.path,
+            output_jar = output_jar.path,
+            zipper = ctx.executable._zipper.path,
+        ),
+        progress_message = "Creating resource jar %{label}",
+    )
+
+    return JavaInfo(
+        output_jar = output_jar,
+        compile_jar = output_jar,
+        runtime_deps = [_java_info(d) for d in ctx.attr.runtime_deps],
+        exports = [_java_info(d) for d in getattr(ctx.attr, "exports", [])],
+        neverlink = getattr(ctx.attr, "neverlink", False),
+    )
+
 def _run_kt_java_builder_actions(
         ctx,
         rule_kind,

@@ -117,6 +117,7 @@ load(
     _kt_jvm_import_impl = "kt_jvm_import_impl",
     _kt_jvm_junit_test_impl = "kt_jvm_junit_test_impl",
     _kt_jvm_library_impl = "kt_jvm_library_impl",
+    _jvm_resources_impl = "jvm_resources_impl",
     _kt_ksp_plugin_impl = "kt_ksp_plugin_impl",
 )
 load("//kotlin/internal/utils:utils.bzl", "utils")
@@ -323,6 +324,19 @@ kt_jvm_library = rule(
     host_fragments = ["java"],  # Required fragments of the host configuration
     implementation = _kt_jvm_library_impl,
     provides = [JavaInfo, _KtJvmInfo],
+)
+
+jvm_resources = rule(
+    doc = """This rule compiles and links Kotlin and Java sources into a .jar file.""",
+    attrs = _lib_common_attr,
+    outputs = dict(
+        jar = "%{name}.jar",
+    ),
+    toolchains = _common_toolchains,
+    fragments = ["java"],  # Required fragments of the target configuration
+    host_fragments = ["java"],  # Required fragments of the host configuration
+    implementation = _jvm_resources_impl,
+    provides = [JavaInfo],
 )
 
 kt_jvm_binary = rule(
