@@ -37,7 +37,7 @@ def _import_labels(labels, rule_kind, **rule_args):
         args = dict(rule_args.items())
         args["visibility"] = ["//visibility:public"]
         args["name"] = label
-        args["jars"] = ["@%s//:%s" % (_KT_COMPILER_REPO, label)]
+        args["jar"] = "@%s//:%s" % (_KT_COMPILER_REPO, label)
         sources = label + "-sources"
         if sources in labels:
             args["srcjar"] = "@%s//:%s" % (_KT_COMPILER_REPO, sources)

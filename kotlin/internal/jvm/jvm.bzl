@@ -404,43 +404,15 @@ Import Kotlin jars.
 ## examples
 
 ```bzl
-# Old style usage -- reference file groups, do not used this.
-kt_jvm_import(
-    name = "kodein",
-    jars = [
-        "@com_github_salomonbrys_kodein_kodein//jar:file",
-        "@com_github_salomonbrys_kodein_kodein_core//jar:file"
-    ]
-)
-
-# This style will pull in the transitive runtime dependencies of the targets as well.
-kt_jvm_import(
-    name = "kodein",
-    jars = [
-        "@com_github_salomonbrys_kodein_kodein//jar",
-        "@com_github_salomonbrys_kodein_kodein_core//jar"
-    ]
-)
-
 # Import a single kotlin jar.
 kt_jvm_import(
     name = "kotlin-stdlib",
-    jars = ["lib/kotlin-stdlib.jar"],
+    jar = "lib/kotlin-stdlib.jar",
     srcjar = "lib/kotlin-stdlib-sources.jar"
 )
 ```
 """,
     attrs = {
-        "jars": attr.label_list(
-            doc = """\
-The jars listed here are equavalent to an export attribute. The label should be either to a single
-class jar, or one or more filegroup labels.  The filegroups, when resolved, must contain  only one jar
-containing classes, and (optionally) one peer file containing sources, named `<jarname>-sources.jar`.
-
-DEPRECATED - please use `jar` and `srcjar` attributes.""",
-            allow_files = True,
-            cfg = "target",
-        ),
         "jar": attr.label(
             doc = """The jar listed here is equivalent to an export attribute.""",
             allow_single_file = True,

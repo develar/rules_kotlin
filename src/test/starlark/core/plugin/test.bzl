@@ -31,9 +31,7 @@ def plugin_for(test, name, deps = [], id = None, **kwargs):
         test.have(
             kt_jvm_import,
             name = name + "_plugin_jar",
-            jars = [
-                plugin_jar,
-            ],
+            jar = plugin_jar,
         ),
     ]
 
@@ -122,9 +120,7 @@ def _test_compile_configuration(test):
             test.have(
                 kt_jvm_import,
                 name = "plugin_jar",
-                jars = [
-                    plugin_jar,
-                ],
+                jar =  plugin_jar,
             ),
         ],
     )
@@ -144,9 +140,7 @@ def _test_compile_configuration(test):
             test.have(
                 kt_jvm_import,
                 name = "dep_jar",
-                jars = [
-                    dep_jar,
-                ],
+                jar = dep_jar,
             ),
         ],
     )
@@ -281,11 +275,9 @@ def _test_library_multiple_plugins_with_same_id(test):
                     test.have(
                         kt_jvm_import,
                         name = "one_plugin_jar",
-                        jars = [
-                            test.artifact(
-                                name = "one_plugin.jar",
-                            ),
-                        ],
+                        jar = test.artifact(
+                             name = "one_plugin.jar",
+                        ),
                     ),
                 ],
             ),
@@ -300,11 +292,9 @@ def _test_library_multiple_plugins_with_same_id(test):
                     test.have(
                         kt_jvm_import,
                         name = "two_plugin_jar",
-                        jars = [
-                            test.artifact(
-                                name = "two_plugin.jar",
-                            ),
-                        ],
+                        jar = test.artifact(
+                            name = "two_plugin.jar",
+                        ),
                     ),
                 ],
             ),

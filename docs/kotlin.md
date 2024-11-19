@@ -86,29 +86,16 @@ Import Kotlin jars.
 ## examples
 
 ```bzl
-# Old style usage -- reference file groups, do not used this.
-kt_jvm_import(
-    name = "kodein",
-    jars = [
-        "@com_github_salomonbrys_kodein_kodein//jar:file",
-        "@com_github_salomonbrys_kodein_kodein_core//jar:file"
-    ]
-)
-
 # This style will pull in the transitive runtime dependencies of the targets as well.
 kt_jvm_import(
     name = "kodein",
-    jars = [
-        "@com_github_salomonbrys_kodein_kodein//jar",
-        "@com_github_salomonbrys_kodein_kodein_core//jar"
-    ]
+    jar = "@com_github_salomonbrys_kodein_kodein//jar",
 )
 
-# Import a single kotlin jar.
 kt_jvm_import(
     name = "kotlin-stdlib",
-    jars = ["lib/kotlin-stdlib.jar"],
-    srcjar = "lib/kotlin-stdlib-sources.jar"
+    jar = "lib/kotlin-stdlib.jar",
+    srcjar = "lib/kotlin-stdlib-sources.jar",
 )
 ```
 
