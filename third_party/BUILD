@@ -73,14 +73,6 @@ java_binary(
     runtime_deps = ["@kotlin_rules_maven//:org_pantsbuild_jarjar"],
 )
 
-# TODO(bazelbuild/rules_kotlin/issues/273): Remove android_sdk import.
-java_import(
-    name = "android_sdk",
-    jars = ["@bazel_tools//tools/android:android_jar"],
-    neverlink = 1,
-    visibility = ["//visibility:public"],
-)
-
 bzl_library(
     name = "bzl",
     srcs = [
