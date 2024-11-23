@@ -59,12 +59,8 @@ test_suite(
 # Release target.
 release_archive(
     name = "rules_kotlin_release",
-    srcs = [
-        "WORKSPACE.bzlmod",
-    ],
     src_map = {
         "BUILD.release.bazel": "BUILD.bazel",
-        "WORKSPACE.release.bazel": "WORKSPACE",
         "MODULE.release.bazel": "MODULE.bazel",
     },
     deps = [
