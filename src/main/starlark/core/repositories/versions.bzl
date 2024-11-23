@@ -93,15 +93,6 @@ versions = struct(
         sha256 = "3b772976fec7bdcda1d84b9d39b176589424c047eb2175bed09aac630e50af43",
     ),
     # needed for rules_pkg and java
-    RULES_PYTHON = version(
-        version = "0.23.1",
-        strip_prefix_template = "rules_python-{version}",
-        url_templates = [
-            "https://github.com/bazelbuild/rules_python/archive/refs/tags/{version}.tar.gz",
-        ],
-        sha256 = "84aec9e21cc56fbc7f1335035a71c850d1b9b5cc6ff497306f84cced9a769841",
-    ),
-    # needed for rules_pkg and java
     RULES_JAVA = version(
         version = "7.2.0",
         url_templates = [
