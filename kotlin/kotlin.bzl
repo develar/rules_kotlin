@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load(
-    ":android.bzl",
-    _kt_android_library = "kt_android_library",
-    _kt_android_local_test = "kt_android_local_test",
-)
+# load(
+#     ":android.bzl",
+#     _kt_android_library = "kt_android_library",
+#     _kt_android_local_test = "kt_android_local_test",
+# )
 load(
     ":core.bzl",
     _define_kt_toolchain = "define_kt_toolchain",
@@ -91,25 +91,25 @@ def kt_jvm_test(**kwargs):
     print("kt_jvm_test should be loaded from //kotlin:jvm.bzl")
     _kt_jvm_test(**kwargs)
 
-def kt_android_library(**kwargs):
-    """
-    Forwarding macro for kt_android_library
+# def kt_android_library(**kwargs):
+#     """
+#     Forwarding macro for kt_android_library
+#
+#     Deprecated:
+#         kt_android_library should be loaded from //kotlin:android.bzl
+#     """
+#     print("kt_android_library should be loaded from //kotlin:android.bzl")
+#     _kt_android_library(**kwargs)
 
-    Deprecated:
-        kt_android_library should be loaded from //kotlin:android.bzl
-    """
-    print("kt_android_library should be loaded from //kotlin:android.bzl")
-    _kt_android_library(**kwargs)
-
-def kt_android_local_test(**kwargs):
-    """
-    Forwarding macro for kt_android_local_test
-
-    Deprecated:
-        kt_android_local_test should be loaded from //kotlin:android.bzl
-    """
-    print("kt_android_local_test should be loaded from //kotlin:android.bzl")
-    _kt_android_local_test(**kwargs)
+# def kt_android_local_test(**kwargs):
+#     """
+#     Forwarding macro for kt_android_local_test
+#
+#     Deprecated:
+#         kt_android_local_test should be loaded from //kotlin:android.bzl
+#     """
+#     print("kt_android_local_test should be loaded from //kotlin:android.bzl")
+#     _kt_android_local_test(**kwargs)
 
 def ktlint_config(**kwargs):
     """

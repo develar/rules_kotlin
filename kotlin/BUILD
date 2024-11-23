@@ -35,22 +35,22 @@ release_archive(
     ],
 )
 
-[
-    stardoc(
-        name = doc,
-        out = "%s.md" % doc,
-        input = "%s.bzl" % doc,
-        deps = [
-            "//kotlin/internal",
-        ],
-    )
-    for doc in [
-        "jvm",
-        "lint",
-        "core",
-        "repositories.doc",
-    ]
-]
+# [
+#     stardoc(
+#         name = doc,
+#         out = "%s.md" % doc,
+#         input = "%s.bzl" % doc,
+#         deps = [
+#             "//kotlin/internal",
+#         ],
+#     )
+#     for doc in [
+#         "jvm",
+#         "lint",
+#         "core",
+#         "repositories.doc",
+#     ]
+# ]
 
 genrule(
     name = "stardoc",
