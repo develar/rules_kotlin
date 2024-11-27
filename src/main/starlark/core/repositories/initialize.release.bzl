@@ -93,31 +93,6 @@ def kotlin_repositories(
         urls = [url.format(version = versions.KOTLINX_SERIALIZATION_JSON_JVM.version) for url in versions.KOTLINX_SERIALIZATION_JSON_JVM.url_templates],
     )
 
-    if is_bzlmod:
-        return
-
-    maybe(
-        http_archive,
-        name = "rules_android",
-        sha256 = versions.ANDROID.SHA,
-        strip_prefix = "rules_android-%s" % versions.ANDROID.VERSION,
-        urls = versions.ANDROID.URLS,
-    )
-
-    versions.use_repository(
-        name = "rules_java",
-        rule = http_archive,
-        version = versions.RULES_JAVA,
-    )
-
-    # See note in versions.bzl before updating bazel_skylib
-    maybe(
-        http_archive,
-        name = "bazel_skylib",
-        urls = ["https://github.com/bazelbuild/bazel-skylib/releases/download/%s/bazel-skylib-%s.tar.gz" % (versions.SKYLIB_VERSION, versions.SKYLIB_VERSION)],
-        sha256 = versions.SKYLIB_SHA,
-    )
-
 def kotlinc_version(release, sha256):
     return version(
         version = release,

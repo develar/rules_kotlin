@@ -52,21 +52,21 @@ release_archive(
 #     ]
 # ]
 
-genrule(
-    name = "stardoc",
-    srcs = [doc for doc in [
-        "jvm",
-        "lint",
-        "core",
-        "repositories.doc",
-    ]],
-    outs = ["kotlin.md"],
-    cmd = """
-    for md in $(SRCS); do
-      cat "$$md" >> $@
-    done
-    """,
-    visibility = [
-        "//visibility:public",
-    ],
-)
+# genrule(
+#     name = "stardoc",
+#     srcs = [doc for doc in [
+#         "jvm",
+#         "lint",
+#         "core",
+#         "repositories.doc",
+#     ]],
+#     outs = ["kotlin.md"],
+#     cmd = """
+#     for md in $(SRCS); do
+#       cat "$$md" >> $@
+#     done
+#     """,
+#     visibility = [
+#         "//visibility:public",
+#     ],
+# )

@@ -9,7 +9,6 @@ import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirFileChecker
 import org.jetbrains.kotlin.fir.declarations.FirFile
 import org.jetbrains.kotlin.fir.declarations.FirResolvedImport
 import org.jetbrains.kotlin.fir.declarations.fullyExpandedClass
-import org.jetbrains.kotlin.fir.resolve.providers.getClassDeclaredFunctionSymbols
 import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
 import org.jetbrains.kotlin.fir.symbols.impl.FirAnonymousObjectSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
@@ -57,9 +56,8 @@ private fun FirResolvedImport.resolveToFun(context: CheckerContext): FirCallable
   if (topLevelFun != null) return topLevelFun
 
   val parentClassId = resolvedParentClassId ?: return null
-  return context.session.symbolProvider
-    .getClassDeclaredFunctionSymbols(parentClassId, funName)
-    .firstOrNull()
+  val classMemberScope = context.session.getClassDeclaredMemberScope(classId)
+  return classMemberScope?.getFunctions(funName).orEmpty().firstOrNull()
 }
 
 private fun FirResolvedImport.classId(): ClassId? {

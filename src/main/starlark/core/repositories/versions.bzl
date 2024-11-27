@@ -53,23 +53,18 @@ versions = struct(
         sha256 = "a9f923be58fbd32670a17f0b729b1df804af882fa57402165741cb26e5440ca1",
     ),
     KOTLIN_CURRENT_COMPILER_RELEASE = version(
-        version = "2.0.21",
+        version = "2.1.0-RC2",
         url_templates = [
             "https://github.com/JetBrains/kotlin/releases/download/v{version}/kotlin-compiler-{version}.zip",
         ],
-        sha256 = "0352c0a45bd22f80f6b26e485cd04da8047baa5de54865281fb9f89a4a7bcf2a",
+        sha256 = "57cb206a7a23562d47bab6965d1aee0f43f5f7842ab5916e4d3fe5dcc6b9196e",
     ),
     KSP_CURRENT_COMPILER_PLUGIN_RELEASE = version(
-        version = "2.0.21-1.0.27",
+        version = "2.1.0-RC2-1.0.28",
         url_templates = [
             "https://github.com/google/ksp/releases/download/{version}/artifacts.zip",
         ],
-        sha256 = "a46c8af11cbad1e5c50cb065edfe759871b700f0db0e30a932668d38b1eab0d3",
-    ),
-    ANDROID = struct(
-        VERSION = "0.1.1",
-        SHA = "cd06d15dd8bb59926e4d65f9003bfc20f9da4b2519985c27e190cddc8b7a7806",
-        URLS = ["https://github.com/bazelbuild/rules_android/archive/v%s.zip" % "0.1.1"],
+        sha256 = "483b94987e5350199787a5cb5a75e6aab048e3b5973c0ad094317d2048475c5a",
     ),
     # To update: https://github.com/bazelbuild/bazel-toolchains#latest-bazel-and-latest-ubuntu-1604-container
     RBE = struct(
@@ -86,11 +81,11 @@ versions = struct(
     ),
     # needed for rules_pkg and java
     RULES_KOTLIN = version(
-        version = "1.9.6",
+        version = "2.0.0-jb.6",
         url_templates = [
-            "https://github.com/bazelbuild/rules_kotlin/releases/download/v{version}/rules_kotlin-v{version}.tar.gz",
+            "https://github.com/develar/rules_kotlin/releases/download/v{version}/rules_kotlin-v{version}.tar.gz",
         ],
-        sha256 = "3b772976fec7bdcda1d84b9d39b176589424c047eb2175bed09aac630e50af43",
+        sha256 = "de24805210baab3acb72e9c6cf9a133bb56e638abb35cd90fdcf4b1bf6f423f7",
     ),
     # needed for rules_pkg and java
     RULES_JAVA = version(
