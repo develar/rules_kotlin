@@ -3,6 +3,7 @@ package io.bazel.kotlin.plugin.jdeps.k2.checker.declaration
 import io.bazel.kotlin.plugin.jdeps.k2.ClassUsageRecorder
 import io.bazel.kotlin.plugin.jdeps.k2.binaryClass
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
+import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirFileChecker
@@ -10,6 +11,10 @@ import org.jetbrains.kotlin.fir.declarations.FirFile
 import org.jetbrains.kotlin.fir.declarations.FirResolvedImport
 import org.jetbrains.kotlin.fir.declarations.fullyExpandedClass
 import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
+import org.jetbrains.kotlin.fir.scopes.FirScope
+import org.jetbrains.kotlin.fir.scopes.getFunctions
+import org.jetbrains.kotlin.fir.scopes.impl.declaredMemberScope
+import org.jetbrains.kotlin.fir.symbols.SymbolInternals
 import org.jetbrains.kotlin.fir.symbols.impl.FirAnonymousObjectSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirRegularClassSymbol
@@ -56,8 +61,8 @@ private fun FirResolvedImport.resolveToFun(context: CheckerContext): FirCallable
   if (topLevelFun != null) return topLevelFun
 
   val parentClassId = resolvedParentClassId ?: return null
-  val classMemberScope = context.session.getClassDeclaredMemberScope(classId)
-  return classMemberScope?.getFunctions(funName).orEmpty().firstOrNull()
+  return context.session.getClassDeclaredMemberScope(parentClassId)
+    ?.getFunctions(funName)?.firstOrNull()
 }
 
 private fun FirResolvedImport.classId(): ClassId? {
@@ -65,6 +70,12 @@ private fun FirResolvedImport.classId(): ClassId? {
   if (importedFqName.isRoot || importedFqName.shortName().asString().isEmpty()) return null
   return this.resolvedParentClassId?.createNestedClassId(importedFqName.shortName())
     ?: ClassId.topLevel(importedFqName)
+}
+
+@OptIn(SymbolInternals::class)
+private fun FirSession.getClassDeclaredMemberScope(classId: ClassId): FirScope? {
+  val classSymbol = symbolProvider.getClassLikeSymbolByClassId(classId) as? FirRegularClassSymbol ?: return null
+  return declaredMemberScope(classSymbol.fir, memberRequiredPhase = null)
 }
 
 // Below is the original private code from the Kotlin compiler
