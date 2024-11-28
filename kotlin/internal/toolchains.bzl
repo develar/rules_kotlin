@@ -291,7 +291,7 @@ def define_kt_toolchain(
         experimental_strict_kotlin_deps = None,
         experimental_report_unused_deps = None,
         experimental_reduce_classpath_mode = None,
-        experimental_multiplex_workers = None,
+        experimental_multiplex_workers = True,
         javac_options = Label("//kotlin/internal:default_javac_options"),
         kotlinc_options = Label("//kotlin/internal:default_kotlinc_options"),
         jvm_stdlibs = None,
