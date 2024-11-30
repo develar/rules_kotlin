@@ -172,13 +172,6 @@ def kt_jvm_library_impl(ctx):
     if ctx.attr.neverlink and ctx.attr.runtime_deps:
         fail("runtime_deps and neverlink is nonsensical.", attr = "runtime_deps")
 
-    if not ctx.attr.srcs and len(ctx.attr.deps) > 0:
-        fail(
-            "deps without srcs is invalid." +
-            "\nTo add runtime dependencies use runtime_deps." +
-            "\nTo export libraries use exports.",
-            attr = "deps",
-        )
     return _make_providers(
         ctx,
         _kt_jvm_produce_jar_actions(ctx, "kt_jvm_library") if ctx.attr.srcs or ctx.attr.resources else export_only_providers(
@@ -188,14 +181,6 @@ def kt_jvm_library_impl(ctx):
             attr = ctx.attr,
         ),
     )
-
-def jvm_resources_impl(ctx):
-   return [
-       _kt_jvm_produce_jar_resources_actions(ctx, "jvm_resources"),
-       DefaultInfo(
-           files = depset([ctx.outputs.jar]),
-       ),
-   ]
 
 def kt_jvm_binary_impl(ctx):
     providers = _kt_jvm_produce_jar_actions(ctx, "kt_jvm_binary")
