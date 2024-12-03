@@ -38,6 +38,7 @@ import java.nio.file.Path
 import java.nio.file.Paths
 import java.nio.file.StandardCopyOption
 import java.util.*
+import java.util.stream.Collectors
 import java.util.stream.Stream
 
 private const val SOURCE_JARS_DIR = "_srcjars"
@@ -280,7 +281,7 @@ private fun JvmCompilationTask.runKaptPlugin(
         // if tracing is enabled, the output should be formatted in a special way, if we aren't
         // tracing then any compiler output would make it's way to the console as is.
         context.whenTracing {
-          printLines("kapt output", outputLines)
+          printLines("kapt output", outputLines.asSequence())
         }
         return@let expandWithGeneratedSources()
       }
@@ -319,7 +320,7 @@ if tracing is enabled, the output should be formatted in a special way, if we ar
 tracing then any compiler output would make it's way to the console as is.
 */
         context.whenTracing {
-          printLines("Ksp output", outputLines)
+          printLines("Ksp output", outputLines.asSequence())
         }
         return@let expandWithGeneratedSources()
       }
@@ -444,7 +445,7 @@ fun compileKotlin(
     .flag("-d", dirs.classes)
     .list()
   context.whenTracing {
-    context.printLines("compileKotlin arguments:\n", argList)
+    context.printLines("compileKotlin arguments:\n", argList.asSequence())
   }
   val task = context.executeCompilerTask(
     args = argList,
@@ -461,11 +462,12 @@ fun compileKotlin(
         dirs.generatedJavaSources,
         dirs.temp,
       )
-        .flatMap {
-          Files.walk(Path.of(it)).use { s -> s.filter { !Files.isDirectory(it) }.toList() }
+        .flatMap { filePath ->
+          Files.walk(Path.of(filePath)).use { file ->
+            file.filter { !Files.isDirectory(it) }.collect(Collectors.toList())
+          }
         }
-        .map { it.toString() }
-        .toList(),
+        .map { it.toString() },
     )
   }
   return task

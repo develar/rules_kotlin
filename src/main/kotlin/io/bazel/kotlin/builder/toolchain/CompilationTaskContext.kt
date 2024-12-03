@@ -61,15 +61,15 @@ class CompilationTaskContext(
    */
   fun printLines(
     header: String,
-    lines: List<String>,
+    lines: Sequence<String>,
     prefix: String = "|  ",
     filterEmpty: Boolean = false,
   ) {
     check(header.isNotEmpty())
     out.println(if (header.endsWith(":")) header else "$header:")
-    lines.forEach {
-      if (it.isNotEmpty() || !filterEmpty) {
-        out.println("$prefix$it")
+    for (line in lines) {
+      if (line.isNotEmpty() || !filterEmpty) {
+        out.println("$prefix$line")
       }
     }
     out.println()
@@ -89,7 +89,7 @@ class CompilationTaskContext(
     header: String,
     msg: MessageOrBuilder,
   ) {
-    printLines(header, TextFormat.printer().printToString(msg).split("\n"), filterEmpty = true)
+    printLines(header, TextFormat.printer().printToString(msg).splitToSequence('\n'), filterEmpty = true)
   }
 
   /**
@@ -195,7 +195,7 @@ class CompilationTaskContext(
       timings?.also {
         printLines(
           "Task timings for ${info.label} (total: ${System.currentTimeMillis() - start} ms)",
-          it,
+          it.asSequence(),
         )
       }
     }

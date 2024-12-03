@@ -82,7 +82,7 @@ class KotlinJvmTaskExecutor
                         }
                       }.given(outputs.jar)
                       .notEmpty {
-                        append(codeGenArgs(this))
+                        append(codeGenArgs(this@apply))
                       }.given(outputs.abijar)
                       .notEmpty {
                         plugin(plugins.jvmAbiGen) {
