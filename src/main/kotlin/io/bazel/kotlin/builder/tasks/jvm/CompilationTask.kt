@@ -46,17 +46,18 @@ private const val LANGUAGE_VERSION_ARG = "-language-version"
 
 private const val MANIFEST_DIR = "META-INF/"
 
-fun JvmCompilationTask.codeGenArgs(): CompilationArgs =
-  CompilationArgs()
+fun JvmCompilationTask.codeGenArgs(): CompilationArgs {
+  return CompilationArgs()
     .absolutePaths(info.friendPathsList) {
       "-Xfriend-paths=${it.joinToString(X_FRIENDS_PATH_SEPARATOR)}"
     }.flag("-d", directories.classes)
     .values(info.passthroughFlagsList)
+}
 
 fun JvmCompilationTask.baseArgs(overrides: Map<String, String> = emptyMap()): CompilationArgs {
   val classpath = when (info.reducedClasspathMode) {
     "KOTLINBUILDER_REDUCED" -> {
-      val transitiveDepsForCompile = mutableSetOf<String>()
+      val transitiveDepsForCompile = LinkedHashSet<String>()
       for (jdepsPath in inputs.depsArtifactsList) {
         BufferedInputStream(Paths.get(jdepsPath).toFile().inputStream()).use {
           val deps = Dependencies.parseFrom(it)
