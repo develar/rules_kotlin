@@ -59,9 +59,9 @@ fun JvmCompilationTask.baseArgs(overrides: Map<String, String> = emptyMap()): Co
     "KOTLINBUILDER_REDUCED" -> {
       val transitiveDepsForCompile = LinkedHashSet<String>()
       for (jdepsPath in inputs.depsArtifactsList) {
-        BufferedInputStream(Paths.get(jdepsPath).toFile().inputStream()).use {
+        BufferedInputStream(Files.newInputStream(Path.of(jdepsPath))).use {
           val deps = Dependencies.parseFrom(it)
-          deps.dependencyList.forEach { dep ->
+          for (dep in deps.dependencyList) {
             if (dep.kind == Deps.Dependency.Kind.EXPLICIT) {
               transitiveDepsForCompile.add(dep.path)
             }
