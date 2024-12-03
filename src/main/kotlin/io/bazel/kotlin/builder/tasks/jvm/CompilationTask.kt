@@ -35,7 +35,6 @@ import java.io.File
 import java.io.ObjectOutputStream
 import java.nio.file.Files
 import java.nio.file.Path
-import java.nio.file.Paths
 import java.nio.file.StandardCopyOption
 import java.util.*
 import java.util.stream.Collectors
@@ -382,7 +381,7 @@ internal fun JvmCompilationTask.createGeneratedStubJar() {
     targetLabel = info.label,
     injectingRuleKind = info.bazelRuleKind,
   ).use {
-    it.addDirectory(Paths.get(directories.incrementalData))
+    it.addDirectory(Path.of(directories.incrementalData))
   }
 }
 
@@ -395,7 +394,7 @@ internal fun JvmCompilationTask.createGeneratedClassJar() {
     targetLabel = info.label,
     injectingRuleKind = info.bazelRuleKind,
   ).use {
-    it.addDirectory(Paths.get(directories.generatedClasses))
+    it.addDirectory(Path.of(directories.generatedClasses))
   }
 }
 
@@ -483,10 +482,10 @@ internal fun JvmCompilationTask.expandWithSourceJarSources(): JvmCompilationTask
   } else {
     expandWithSources(
       SourceJarExtractor(
-        destDir = Paths.get(directories.temp).resolve(SOURCE_JARS_DIR),
+        destDir = Path.of(directories.temp).resolve(SOURCE_JARS_DIR),
         fileMatcher = { str: String -> IS_JVM_SOURCE_FILE.test(str) || "/$MANIFEST_DIR" in str },
       ).also {
-        it.jarFiles.addAll(inputs.sourceJarsList.map { p -> Paths.get(p) })
+        it.jarFiles.addAll(inputs.sourceJarsList.map { p -> Path.of(p) })
         it.execute()
       }.sourcesList
         .iterator(),
@@ -494,42 +493,31 @@ internal fun JvmCompilationTask.expandWithSourceJarSources(): JvmCompilationTask
   }
 
 private val Directories.stubs
-  get() =
-    Files
-      .createDirectories(
-        Paths
-          .get(temp)
-          .resolve("stubs"),
-      ).toString()
+  get() = Files.createDirectories(Path.of(temp).resolve("stubs")).toString()
+
 private val Directories.incrementalData
-  get() =
-    Files
-      .createDirectories(
-        Paths
-          .get(temp)
-          .resolve("incrementalData"),
-      ).toString()
+  get() = Files.createDirectories(Path.of(temp).resolve("incrementalData")).toString()
 
 /**
  * Create a new [JvmCompilationTask] with sources found in the generatedSources directory. This should be run after
  * annotation processors have been run.
  */
-fun JvmCompilationTask.expandWithGeneratedSources(): JvmCompilationTask =
-  expandWithSources(
+fun JvmCompilationTask.expandWithGeneratedSources(): JvmCompilationTask {
+  return expandWithSources(
     Stream
       .of(directories.generatedSources, directories.generatedJavaSources)
-      .map { s -> Paths.get(s) }
+      .map { s -> Path.of(s) }
       .flatMap { p -> Files.walk(p) }
       .filter { !Files.isDirectory(it) }
       .map { it.toString() }
       .distinct()
       .iterator(),
   )
+}
 
 private fun JvmCompilationTask.expandWithSources(sources: Iterator<String>): JvmCompilationTask =
   updateBuilder { builder ->
-    sources
-      .copyManifestFilesToGeneratedClasses(directories)
+    copyManifestFilesToGeneratedClasses(sources, directories)
       .filterOutNonCompilableSources()
       .partitionJvmSources(
         { builder.inputsBuilder.addKotlinSources(it) },
@@ -548,17 +536,18 @@ private fun JvmCompilationTask.updateBuilder(
 /**
  * Copy generated manifest files from KSP task into generated folder
  */
-internal fun Iterator<String>.copyManifestFilesToGeneratedClasses(
+internal fun copyManifestFilesToGeneratedClasses(
+  iterator: Iterator<String>,
   directories: Directories,
 ): Iterator<String> {
   val result = mutableSetOf<String>()
-  this.forEach {
+  for (it in iterator) {
     if ("/$MANIFEST_DIR" in it) {
-      val path = Paths.get(it)
-      val srcJarsPath = Paths.get(directories.temp, SOURCE_JARS_DIR)
+      val path = Path.of(it)
+      val srcJarsPath = Path.of(directories.temp, SOURCE_JARS_DIR)
       if (Files.exists(srcJarsPath)) {
         val relativePath = srcJarsPath.relativize(path)
-        val destPath = Paths.get(directories.generatedClasses).resolve(relativePath)
+        val destPath = Path.of(directories.generatedClasses).resolve(relativePath)
         destPath.parent.toFile().mkdirs()
         Files.copy(path, destPath, StandardCopyOption.REPLACE_EXISTING)
       }
