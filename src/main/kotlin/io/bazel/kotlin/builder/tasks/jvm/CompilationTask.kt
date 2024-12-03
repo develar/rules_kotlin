@@ -20,7 +20,6 @@ package io.bazel.kotlin.builder.tasks.jvm
 
 import com.google.devtools.build.lib.view.proto.Deps
 import com.google.devtools.build.lib.view.proto.Deps.Dependencies
-import io.bazel.kotlin.builder.tasks.jvm.JDepsGenerator.writeJdeps
 import io.bazel.kotlin.builder.toolchain.CompilationTaskContext
 import io.bazel.kotlin.builder.toolchain.KotlinToolchain
 import io.bazel.kotlin.builder.utils.IS_JVM_SOURCE_FILE
@@ -36,6 +35,7 @@ import java.io.File
 import java.io.ObjectOutputStream
 import java.nio.file.Files
 import java.nio.file.Files.isDirectory
+import java.nio.file.Files.newOutputStream
 import java.nio.file.Files.walk
 import java.nio.file.Path
 import java.nio.file.Paths
@@ -424,51 +424,52 @@ fun JvmCompilationTask.compileKotlin(
   printOnFail: Boolean = true,
 ): List<String> {
   if (inputs.kotlinSourcesList.isEmpty()) {
-    writeJdeps(outputs.jdeps,
-      Dependencies.newBuilder().let {
-        it.ruleLabel = info.label
-        it.build()
-      }
-    )
+    val file = Path.of(outputs.jdeps)
+    Files.deleteIfExists(file)
+    newOutputStream(Files.createFile(file)).use {
+      val depBuilder = Dependencies.newBuilder()
+      depBuilder.ruleLabel = info.label
+      depBuilder.build()
+    }
     return emptyList()
-  } else {
-    return (
-      args +
-        plugins(
-          options = inputs.compilerPluginOptionsList,
-          classpath = inputs.compilerPluginClasspathList,
-        )
-    ).values(inputs.javaSourcesList)
-      .values(inputs.kotlinSourcesList)
-      .flag("-d", directories.classes)
-      .list()
-      .let {
-        context.whenTracing {
-          context.printLines("compileKotlin arguments:\n", it)
-        }
-        return@let context
-          .executeCompilerTask(it, compiler::compile, printOnFail = printOnFail)
-          .also {
-            context.whenTracing {
-              printLines(
-                "kotlinc Files Created:",
-                Stream
-                  .of(
-                    directories.classes,
-                    directories.generatedClasses,
-                    directories.generatedSources,
-                    directories.generatedJavaSources,
-                    directories.temp,
-                  ).map { Paths.get(it) }
-                  .flatMap { walk(it) }
-                  .filter { !isDirectory(it) }
-                  .map { it.toString() }
-                  .collect(toList()),
-              )
-            }
-          }
-      }
   }
+
+  return (
+    args +
+      plugins(
+        options = inputs.compilerPluginOptionsList,
+        classpath = inputs.compilerPluginClasspathList,
+      )
+    ).values(inputs.javaSourcesList)
+    .values(inputs.kotlinSourcesList)
+    .flag("-d", directories.classes)
+    .list()
+    .let {
+      context.whenTracing {
+        context.printLines("compileKotlin arguments:\n", it)
+      }
+      return@let context
+        .executeCompilerTask(it, compiler::compile, printOnFail = printOnFail)
+        .also {
+          context.whenTracing {
+            printLines(
+              "kotlinc Files Created:",
+              Stream
+                .of(
+                  directories.classes,
+                  directories.generatedClasses,
+                  directories.generatedSources,
+                  directories.generatedJavaSources,
+                  directories.temp,
+                ).map { Paths.get(it) }
+                .flatMap { walk(it) }
+                .filter { !isDirectory(it) }
+                .map { it.toString() }
+                .collect(toList()),
+            )
+          }
+        }
+    }
 }
 
 /**
