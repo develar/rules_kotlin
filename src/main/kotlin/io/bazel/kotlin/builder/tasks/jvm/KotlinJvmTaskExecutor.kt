@@ -66,6 +66,7 @@ class KotlinJvmTaskExecutor
               context.execute("kotlinc") {
                 if (compileKotlin) {
                   compileKotlin(
+                    compilationTask = this,
                     context = context,
                     compiler = compiler,
                     args = baseArgs()

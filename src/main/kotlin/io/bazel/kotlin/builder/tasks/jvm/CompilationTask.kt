@@ -412,32 +412,35 @@ internal fun JvmCompilationTask.createGeneratedKspKotlinSrcJar() {
 /**
  * Compiles Kotlin sources to classes. Does not compile Java sources.
  */
-fun JvmCompilationTask.compileKotlin(
+fun compileKotlin(
+  compilationTask: JvmCompilationTask,
   context: CompilationTaskContext,
   compiler: KotlinToolchain.KotlincInvoker,
-  args: CompilationArgs = baseArgs(),
+  args: CompilationArgs = compilationTask.baseArgs(),
   printOnFail: Boolean = true,
 ): List<String> {
+  val inputs = compilationTask.inputs
   if (inputs.kotlinSourcesList.isEmpty()) {
-    val file = Path.of(outputs.jdeps)
+    val file = Path.of(compilationTask.outputs.jdeps)
     Files.deleteIfExists(file)
     Files.newOutputStream(Files.createFile(file)).use {
       val depBuilder = Dependencies.newBuilder()
-      depBuilder.ruleLabel = info.label
+      depBuilder.ruleLabel = compilationTask.info.label
       depBuilder.build()
     }
     return emptyList()
   }
 
+  val dirs = compilationTask.directories
   return (
     args +
-      plugins(
+      compilationTask.plugins(
         options = inputs.compilerPluginOptionsList,
         classpath = inputs.compilerPluginClasspathList,
       )
     ).values(inputs.javaSourcesList)
     .values(inputs.kotlinSourcesList)
-    .flag("-d", directories.classes)
+    .flag("-d", dirs.classes)
     .list()
     .let {
       context.whenTracing {
@@ -452,11 +455,11 @@ fun JvmCompilationTask.compileKotlin(
         printLines(
           "kotlinc Files Created:",
           sequenceOf(
-            directories.classes,
-            directories.generatedClasses,
-            directories.generatedSources,
-            directories.generatedJavaSources,
-            directories.temp,
+            dirs.classes,
+            dirs.generatedClasses,
+            dirs.generatedSources,
+            dirs.generatedJavaSources,
+            dirs.temp,
           )
             .flatMap { Files.walk(Path.of(it)).use { s -> s.filter { !Files.isDirectory(it) }.toList() } }
             .map { it.toString() }
