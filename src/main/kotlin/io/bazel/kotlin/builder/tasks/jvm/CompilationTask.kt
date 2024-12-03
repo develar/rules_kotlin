@@ -19,7 +19,7 @@
 package io.bazel.kotlin.builder.tasks.jvm
 
 import com.google.devtools.build.lib.view.proto.Deps
-import io.bazel.kotlin.builder.tasks.jvm.JDepsGenerator.emptyJdeps
+import com.google.devtools.build.lib.view.proto.Deps.Dependencies
 import io.bazel.kotlin.builder.tasks.jvm.JDepsGenerator.writeJdeps
 import io.bazel.kotlin.builder.toolchain.CompilationTaskContext
 import io.bazel.kotlin.builder.toolchain.KotlinToolchain
@@ -65,7 +65,7 @@ fun JvmCompilationTask.baseArgs(overrides: Map<String, String> = emptyMap()): Co
         val transitiveDepsForCompile = mutableSetOf<String>()
         inputs.depsArtifactsList.forEach { jdepsPath ->
           BufferedInputStream(Paths.get(jdepsPath).toFile().inputStream()).use {
-            val deps = Deps.Dependencies.parseFrom(it)
+            val deps = Dependencies.parseFrom(it)
             deps.dependencyList.forEach { dep ->
               if (dep.kind == Deps.Dependency.Kind.EXPLICIT) {
                 transitiveDepsForCompile.add(dep.path)
@@ -206,7 +206,7 @@ internal fun JvmCompilationTask.kspArgs(plugins: InternalCompilerPlugins): Compi
           // Directory where generated Kotlin sources files are written to
           "kotlinOutputDir" to listOf(directories.generatedSources),
           // Directory where META-INF data is written to. This might not be the most ideal place to
-          // write this. Maybe just directly to the classes directory?
+          // write this. Maybe just directly to the classes' directory?
           "resourceOutputDir" to listOf(directories.generatedSources),
           // TODO(bencodes) Not sure what this directory is yet.
           "kspOutputDir" to listOf(directories.incrementalData),
@@ -279,10 +279,10 @@ private fun JvmCompilationTask.runKaptPlugin(
         context.executeCompilerTask(
           args,
           compiler::compile,
-          printOnSuccess = context.whenTracing { false } ?: true,
+          printOnSuccess = context.whenTracing { false } != false,
         )
       }.let { outputLines ->
-        // if tracing is enabled the output should be formatted in a special way, if we aren't
+        // if tracing is enabled, the output should be formatted in a special way, if we aren't
         // tracing then any compiler output would make it's way to the console as is.
         context.whenTracing {
           printLines("kapt output", outputLines)
@@ -316,11 +316,13 @@ private fun JvmCompilationTask.runKspPlugin(
         context.executeCompilerTask(
           args,
           compiler::compile,
-          printOnSuccess = context.whenTracing { false } ?: true,
+          printOnSuccess = context.whenTracing { false } != false,
         )
       }.let { outputLines ->
-        // if tracing is enabled the output should be formatted in a special way, if we aren't
-        // tracing then any compiler output would make it's way to the console as is.
+        /*
+if tracing is enabled, the output should be formatted in a special way, if we aren't
+tracing then any compiler output would make it's way to the console as is.
+*/
         context.whenTracing {
           printLines("Ksp output", outputLines)
         }
@@ -422,7 +424,12 @@ fun JvmCompilationTask.compileKotlin(
   printOnFail: Boolean = true,
 ): List<String> {
   if (inputs.kotlinSourcesList.isEmpty()) {
-    writeJdeps(outputs.jdeps, emptyJdeps(info.label))
+    writeJdeps(outputs.jdeps,
+      Dependencies.newBuilder().let {
+        it.ruleLabel = info.label
+        it.build()
+      }
+    )
     return emptyList()
   } else {
     return (
@@ -560,7 +567,7 @@ internal fun Iterator<String>.copyManifestFilesToGeneratedClasses(
 }
 
 /**
- * Only keep java and kotlin files for the iterator. Filter our all other non-compilable files.
+ * Only keep java and kotlin files for the iterator. Filter all other non-compilable files.
  */
 private fun Iterator<String>.filterOutNonCompilableSources(): Iterator<String> {
   val result = mutableListOf<String>()

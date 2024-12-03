@@ -30,10 +30,4 @@ object JDepsGenerator {
       FileOutputStream(Files.createFile(it).toFile()).use(jdepsContent::writeTo)
     }
   }
-
-  internal fun emptyJdeps(label: String): Deps.Dependencies =
-    Deps.Dependencies.newBuilder().let {
-      it.ruleLabel = label
-      it.build()
-    }
 }
