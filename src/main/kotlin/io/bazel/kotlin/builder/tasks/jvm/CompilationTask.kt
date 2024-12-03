@@ -34,16 +34,11 @@ import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.ObjectOutputStream
 import java.nio.file.Files
-import java.nio.file.Files.isDirectory
-import java.nio.file.Files.newOutputStream
-import java.nio.file.Files.walk
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.nio.file.StandardCopyOption
 import java.util.*
-import java.util.stream.Collectors.toList
 import java.util.stream.Stream
-import kotlin.io.path.exists
 
 private const val SOURCE_JARS_DIR = "_srcjars"
 private const val API_VERSION_ARG = "-api-version"
@@ -426,7 +421,7 @@ fun JvmCompilationTask.compileKotlin(
   if (inputs.kotlinSourcesList.isEmpty()) {
     val file = Path.of(outputs.jdeps)
     Files.deleteIfExists(file)
-    newOutputStream(Files.createFile(file)).use {
+    Files.newOutputStream(Files.createFile(file)).use {
       val depBuilder = Dependencies.newBuilder()
       depBuilder.ruleLabel = info.label
       depBuilder.build()
@@ -448,27 +443,27 @@ fun JvmCompilationTask.compileKotlin(
       context.whenTracing {
         context.printLines("compileKotlin arguments:\n", it)
       }
-      return@let context
-        .executeCompilerTask(it, compiler::compile, printOnFail = printOnFail)
-        .also {
-          context.whenTracing {
-            printLines(
-              "kotlinc Files Created:",
-              Stream
-                .of(
-                  directories.classes,
-                  directories.generatedClasses,
-                  directories.generatedSources,
-                  directories.generatedJavaSources,
-                  directories.temp,
-                ).map { Paths.get(it) }
-                .flatMap { walk(it) }
-                .filter { !isDirectory(it) }
-                .map { it.toString() }
-                .collect(toList()),
-            )
-          }
-        }
+      val task = context.executeCompilerTask(
+        args = it,
+        compile = compiler::compile,
+        printOnFail = printOnFail
+      )
+      context.whenTracing {
+        printLines(
+          "kotlinc Files Created:",
+          sequenceOf(
+            directories.classes,
+            directories.generatedClasses,
+            directories.generatedSources,
+            directories.generatedJavaSources,
+            directories.temp,
+          )
+            .flatMap { Files.walk(Path.of(it)).use { s -> s.filter { !Files.isDirectory(it) }.toList() } }
+            .map { it.toString() }
+            .toList(),
+        )
+      }
+      return@let  task
     }
 }
 
@@ -518,8 +513,8 @@ fun JvmCompilationTask.expandWithGeneratedSources(): JvmCompilationTask =
     Stream
       .of(directories.generatedSources, directories.generatedJavaSources)
       .map { s -> Paths.get(s) }
-      .flatMap { p -> walk(p) }
-      .filter { !isDirectory(it) }
+      .flatMap { p -> Files.walk(p) }
+      .filter { !Files.isDirectory(it) }
       .map { it.toString() }
       .distinct()
       .iterator(),
@@ -555,7 +550,7 @@ internal fun Iterator<String>.copyManifestFilesToGeneratedClasses(
     if ("/$MANIFEST_DIR" in it) {
       val path = Paths.get(it)
       val srcJarsPath = Paths.get(directories.temp, SOURCE_JARS_DIR)
-      if (srcJarsPath.exists()) {
+      if (Files.exists(srcJarsPath)) {
         val relativePath = srcJarsPath.relativize(path)
         val destPath = Paths.get(directories.generatedClasses).resolve(relativePath)
         destPath.parent.toFile().mkdirs()
