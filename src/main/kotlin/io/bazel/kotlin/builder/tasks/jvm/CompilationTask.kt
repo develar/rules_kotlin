@@ -46,12 +46,12 @@ private const val LANGUAGE_VERSION_ARG = "-language-version"
 
 private const val MANIFEST_DIR = "META-INF/"
 
-fun JvmCompilationTask.codeGenArgs(): CompilationArgs {
+fun codeGenArgs(compilationTask: JvmCompilationTask): CompilationArgs {
   return CompilationArgs()
-    .absolutePaths(info.friendPathsList) {
+    .absolutePaths(compilationTask.info.friendPathsList) {
       "-Xfriend-paths=${it.joinToString(X_FRIENDS_PATH_SEPARATOR)}"
-    }.flag("-d", directories.classes)
-    .values(info.passthroughFlagsList)
+    }.flag("-d", compilationTask.directories.classes)
+    .values(compilationTask.info.passthroughFlagsList)
 }
 
 fun JvmCompilationTask.baseArgs(overrides: Map<String, String> = emptyMap()): CompilationArgs {
