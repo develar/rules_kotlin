@@ -54,24 +54,24 @@ fun JvmCompilationTask.codeGenArgs(): CompilationArgs =
     .values(info.passthroughFlagsList)
 
 fun JvmCompilationTask.baseArgs(overrides: Map<String, String> = emptyMap()): CompilationArgs {
-  val classpath =
-    when (info.reducedClasspathMode) {
-      "KOTLINBUILDER_REDUCED" -> {
-        val transitiveDepsForCompile = mutableSetOf<String>()
-        inputs.depsArtifactsList.forEach { jdepsPath ->
-          BufferedInputStream(Paths.get(jdepsPath).toFile().inputStream()).use {
-            val deps = Dependencies.parseFrom(it)
-            deps.dependencyList.forEach { dep ->
-              if (dep.kind == Deps.Dependency.Kind.EXPLICIT) {
-                transitiveDepsForCompile.add(dep.path)
-              }
+  val classpath = when (info.reducedClasspathMode) {
+    "KOTLINBUILDER_REDUCED" -> {
+      val transitiveDepsForCompile = mutableSetOf<String>()
+      for (jdepsPath in inputs.depsArtifactsList) {
+        BufferedInputStream(Paths.get(jdepsPath).toFile().inputStream()).use {
+          val deps = Dependencies.parseFrom(it)
+          deps.dependencyList.forEach { dep ->
+            if (dep.kind == Deps.Dependency.Kind.EXPLICIT) {
+              transitiveDepsForCompile.add(dep.path)
             }
           }
         }
-        inputs.directDependenciesList + transitiveDepsForCompile
       }
-      else -> inputs.classpathList
-    } as List<String>
+      inputs.directDependenciesList + transitiveDepsForCompile
+    }
+
+    else -> inputs.classpathList
+  } as List<String>
 
   return CompilationArgs()
     .flag("-cp")
@@ -89,31 +89,32 @@ fun JvmCompilationTask.baseArgs(overrides: Map<String, String> = emptyMap()): Co
     .flag("-module-name", info.moduleName)
 }
 
-internal fun JvmCompilationTask.plugins(
+internal fun plugins(
+  compilationTask: JvmCompilationTask,
   options: List<String>,
   classpath: List<String>,
-): CompilationArgs =
-  CompilationArgs().apply {
-    classpath.forEach {
-      xFlag("plugin", it)
-    }
-
-    val optionTokens =
-      mapOf(
-        "{generatedClasses}" to directories.generatedClasses,
-        "{stubs}" to directories.stubs,
-        "{temp}" to directories.temp,
-        "{generatedSources}" to directories.generatedSources,
-        "{classpath}" to classpath.joinToString(File.pathSeparator),
-      )
-    options.forEach { opt ->
-      val formatted =
-        optionTokens.entries.fold(opt) { formatting, (token, value) ->
-          formatting.replace(token, value)
-        }
-      flag("-P", "plugin:$formatted")
-    }
+): CompilationArgs {
+  val compilationArgs = CompilationArgs()
+  for (it in classpath) {
+    compilationArgs.xFlag("plugin", it)
   }
+
+  val dirs = compilationTask.directories
+  val optionTokens = mapOf(
+    "{generatedClasses}" to dirs.generatedClasses,
+    "{stubs}" to dirs.stubs,
+    "{temp}" to dirs.temp,
+    "{generatedSources}" to dirs.generatedSources,
+    "{classpath}" to classpath.joinToString(File.pathSeparator),
+  )
+  for (opt in options) {
+    val formatted = optionTokens.entries.fold(opt) { formatting, (token, value) ->
+      formatting.replace(token, value)
+    }
+    compilationArgs.flag("-P", "plugin:$formatted")
+  }
+  return compilationArgs
+}
 
 internal fun JvmCompilationTask.preProcessingSteps(
   context: CompilationTaskContext,
@@ -261,6 +262,7 @@ private fun JvmCompilationTask.runKaptPlugin(
     baseArgs()
       .plus(
         plugins(
+          compilationTask = this,
           options = inputs.stubsPluginOptionsList,
           classpath = inputs.stubsPluginClasspathList,
         ),
@@ -434,7 +436,8 @@ fun compileKotlin(
   val dirs = compilationTask.directories
   val argList = (
     args +
-      compilationTask.plugins(
+      plugins(
+        compilationTask = compilationTask,
         options = inputs.compilerPluginOptionsList,
         classpath = inputs.compilerPluginClasspathList,
       )
