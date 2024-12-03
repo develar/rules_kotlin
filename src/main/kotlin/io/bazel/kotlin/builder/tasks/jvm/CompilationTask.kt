@@ -432,7 +432,7 @@ fun compileKotlin(
   }
 
   val dirs = compilationTask.directories
-  return (
+  val argList = (
     args +
       compilationTask.plugins(
         options = inputs.compilerPluginOptionsList,
@@ -442,32 +442,32 @@ fun compileKotlin(
     .values(inputs.kotlinSourcesList)
     .flag("-d", dirs.classes)
     .list()
-    .let {
-      context.whenTracing {
-        context.printLines("compileKotlin arguments:\n", it)
-      }
-      val task = context.executeCompilerTask(
-        args = it,
-        compile = compiler::compile,
-        printOnFail = printOnFail
+  context.whenTracing {
+    context.printLines("compileKotlin arguments:\n", argList)
+  }
+  val task = context.executeCompilerTask(
+    args = argList,
+    compile = compiler::compile,
+    printOnFail = printOnFail,
+  )
+  context.whenTracing {
+    printLines(
+      "kotlinc Files Created:",
+      sequenceOf(
+        dirs.classes,
+        dirs.generatedClasses,
+        dirs.generatedSources,
+        dirs.generatedJavaSources,
+        dirs.temp,
       )
-      context.whenTracing {
-        printLines(
-          "kotlinc Files Created:",
-          sequenceOf(
-            dirs.classes,
-            dirs.generatedClasses,
-            dirs.generatedSources,
-            dirs.generatedJavaSources,
-            dirs.temp,
-          )
-            .flatMap { Files.walk(Path.of(it)).use { s -> s.filter { !Files.isDirectory(it) }.toList() } }
-            .map { it.toString() }
-            .toList(),
-        )
-      }
-      return@let  task
-    }
+        .flatMap {
+          Files.walk(Path.of(it)).use { s -> s.filter { !Files.isDirectory(it) }.toList() }
+        }
+        .map { it.toString() }
+        .toList(),
+    )
+  }
+  return task
 }
 
 /**
