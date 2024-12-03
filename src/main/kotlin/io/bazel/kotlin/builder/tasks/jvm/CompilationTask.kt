@@ -55,38 +55,35 @@ fun codeGenArgs(compilationTask: JvmCompilationTask): CompilationArgs {
 }
 
 fun JvmCompilationTask.baseArgs(overrides: Map<String, String> = emptyMap()): CompilationArgs {
-  val classpath = when (info.reducedClasspathMode) {
-    "KOTLINBUILDER_REDUCED" -> {
-      val transitiveDepsForCompile = LinkedHashSet<String>()
-      for (jdepsPath in inputs.depsArtifactsList) {
-        BufferedInputStream(Files.newInputStream(Path.of(jdepsPath))).use {
-          val deps = Dependencies.parseFrom(it)
-          for (dep in deps.dependencyList) {
-            if (dep.kind == Deps.Dependency.Kind.EXPLICIT) {
-              transitiveDepsForCompile.add(dep.path)
-            }
+  val classpath: Sequence<String> = if (info.reducedClasspathMode == "KOTLINBUILDER_REDUCED") {
+    val transitiveDepsForCompile = LinkedHashSet<String>()
+    for (jdepsPath in inputs.depsArtifactsList) {
+      BufferedInputStream(Files.newInputStream(Path.of(jdepsPath))).use {
+        val deps = Dependencies.parseFrom(it)
+        for (dep in deps.dependencyList) {
+          if (dep.kind == Deps.Dependency.Kind.EXPLICIT) {
+            transitiveDepsForCompile.add(dep.path)
           }
         }
       }
-      inputs.directDependenciesList + transitiveDepsForCompile
     }
+    inputs.directDependenciesList.asSequence() + transitiveDepsForCompile
+  }
+  else {
+    inputs.classpathList.asSequence()
+  }
 
-    else -> inputs.classpathList
-  } as List<String>
+  val classPathString = (classpath + directories.generatedClasses).joinToString(File.pathSeparator)
 
-  return CompilationArgs()
-    .flag("-cp")
-    .paths(
-      classpath + directories.generatedClasses,
-    ) {
-      it
-        .map(Path::toString)
-        .joinToString(File.pathSeparator)
-    }.flag(API_VERSION_ARG, overrides[API_VERSION_ARG] ?: info.toolchainInfo.common.apiVersion)
+  val compilationArgs = CompilationArgs()
+  compilationArgs.flag("-cp").value(classPathString)
+  return compilationArgs
+    .flag(API_VERSION_ARG, overrides[API_VERSION_ARG] ?: info.toolchainInfo.common.apiVersion)
     .flag(
       LANGUAGE_VERSION_ARG,
       overrides[LANGUAGE_VERSION_ARG] ?: info.toolchainInfo.common.languageVersion,
-    ).flag("-jvm-target", info.toolchainInfo.jvm.jvmTarget)
+    )
+    .flag("-jvm-target", info.toolchainInfo.jvm.jvmTarget)
     .flag("-module-name", info.moduleName)
 }
 

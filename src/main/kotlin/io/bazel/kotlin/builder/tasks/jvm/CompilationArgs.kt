@@ -112,22 +112,6 @@ class CompilationArgs(
     )
   }
 
-  fun paths(
-    paths: Collection<String>,
-    toArgs: (Sequence<Path>) -> String,
-  ): CompilationArgs {
-    if (paths.isEmpty()) {
-      return this
-    }
-    return value(
-      toArgs(
-        paths
-          .asSequence()
-          .map { dfs.getPath(it) },
-      ),
-    )
-  }
-
   fun value(value: String): CompilationArgs {
     args.add(value)
     return this
