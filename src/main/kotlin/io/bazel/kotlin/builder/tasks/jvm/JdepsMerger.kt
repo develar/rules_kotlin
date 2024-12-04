@@ -77,50 +77,52 @@ class JdepsMerger {
       }
 
       rootBuilder.addAllDependency(dependencyMap.values)
-
       rootBuilder.success = true
 
       Files.write(Path.of(output), rootBuilder.build().toByteArray())
 
-      if (reportUnusedDeps != "off") {
-        val kindMap = mutableMapOf<String, Deps.Dependency.Kind>()
+      if (reportUnusedDeps == "off") {
+        return 0
+      }
 
-        // A target might produce multiple jars (Android produces _resources.jar)
-        // so we need to make sure wedon't mart the dependency as unused
-        // unless all of the jars are unused.
-        dependencyMap.values.forEach {
-          var label = readJarOwnerFromManifest(Paths.get(it.path)).label
-          if (label != null) {
-            if (label.startsWith("@@") || label.startsWith("@/")) {
-              label = label.substring(1)
-            }
-            if (kindMap.getOrDefault(label, Deps.Dependency.Kind.UNUSED) >= it.kind) {
-              kindMap.put(label, it.kind)
-            }
+      val kindMap = LinkedHashMap<String, Deps.Dependency.Kind>()
+
+      // A target might produce multiple jars (Android produces _resources.jar)
+      // so we need to make sure wedon't mart the dependency as unused
+      // unless all of the jars are unused.
+      for (dep in dependencyMap.values) {
+        var label = readJarOwnerFromManifest(Paths.get(dep.path)).label
+        if (label != null) {
+          if (label.startsWith("@@") || label.startsWith("@/")) {
+            label = label.substring(1)
+          }
+          if (kindMap.getOrDefault(label, Deps.Dependency.Kind.UNUSED) >= dep.kind) {
+            kindMap.put(label, dep.kind)
           }
         }
+      }
 
-        val unusedLabels =
-          kindMap.entries
-            .filter { it.value == Deps.Dependency.Kind.UNUSED }
-            .map { it.key }
-            .filter { it != label }
+      val unusedLabels = kindMap.entries
+        .asSequence()
+        .filter { it.value == Deps.Dependency.Kind.UNUSED }
+        .map { it.key }
+        .filter { it != label }
+        .toList()
 
-        if (unusedLabels.isNotEmpty()) {
-          ctx.info {
-            val open = "\u001b[35m\u001b[1m"
-            val close = "\u001b[0m"
-            return@info """
-            |$open ** Please remove the following dependencies:$close ${unusedLabels.joinToString(
-              " ",
-            )} from $label 
-            |$open ** You can use the following buildozer command:$close buildozer 'remove deps ${
-              unusedLabels.joinToString(" ")
-            }' $label
-            """.trimMargin()
-          }
-          return if (reportUnusedDeps == "error") 1 else 0
+      if (unusedLabels.isNotEmpty()) {
+        ctx.info {
+          val open = "\u001b[35m\u001b[1m"
+          val close = "\u001b[0m"
+          return@info """
+          |$open ** Please remove the following dependencies:$close ${unusedLabels.joinToString(
+            " ",
+          )} from $label 
+          |$open ** You can use the following buildozer command:$close buildozer 'remove deps ${
+            unusedLabels.joinToString(" ")
+          }' $label
+          """.trimMargin()
         }
+        return if (reportUnusedDeps == "error") 1 else 0
       }
       return 0
     }
