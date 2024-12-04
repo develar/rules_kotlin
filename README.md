@@ -29,12 +29,8 @@ Also, `kt_jvm_*` rules support the following standard `java_*` rules attributes:
   * `data`
   * `resource_jars`
   * `runtime_deps`
-  * `resources`
-  * `resources_strip_prefix`
   * `exports`
   
-Android rules also support custom_package for `R.java` generation, `manifest=`, `resource_files`, etc.
-
 Other features:
   * Persistent worker support.
   * Mixed-Mode compilation (compile Java and Kotlin in one pass).

@@ -161,34 +161,6 @@ def _collect_plugins_for_export(local, exports):
         ],
     )
 
-_CONVENTIONAL_RESOURCE_PATHS = [
-    "src/main/java",
-    "src/main/resources",
-    "src/test/java",
-    "src/test/resources",
-    "kotlin",
-]
-
-def _adjust_resources_path_by_strip_prefix(path, resource_strip_prefix):
-    if not path.startswith(resource_strip_prefix):
-        fail("Resource file %s is not under the specified prefix to strip" % path)
-
-    clean_path = path[len(resource_strip_prefix):]
-    return clean_path
-
-def _adjust_resources_path_by_default_prefixes(path):
-    for cp in _CONVENTIONAL_RESOURCE_PATHS:
-        _, _, rel_path = path.partition(cp)
-        if rel_path:
-            return rel_path
-    return path
-
-def _adjust_resources_path(path, resource_strip_prefix):
-    if resource_strip_prefix:
-        return _adjust_resources_path_by_strip_prefix(path, resource_strip_prefix)
-    else:
-        return _adjust_resources_path_by_default_prefixes(path)
-
 def _format_compile_plugin_options(o):
     """Format compiler option into id:value for cmd line."""
     return [
@@ -295,42 +267,6 @@ def _fold_jars_action(ctx, rule_kind, toolchains, output_jar, input_jars, action
         ),
     )
 
-def _resourcejar_args_action(ctx):
-    res_cmd = []
-    for f in ctx.files.resources:
-        target_path = _adjust_resources_path(f.short_path, ctx.attr.resource_strip_prefix)
-        if target_path[0] == "/":
-            target_path = target_path[1:]
-        line = "{target_path}={f_path}\n".format(
-            target_path = target_path,
-            f_path = f.path,
-        )
-        res_cmd.extend([line])
-    zipper_args_file = ctx.actions.declare_file("%s_resources_zipper_args" % ctx.label.name)
-    ctx.actions.write(zipper_args_file, "".join(res_cmd))
-    return zipper_args_file
-
-def _build_resourcejar_action(ctx):
-    """sets up an action to build a resource jar for the target being compiled.
-    Returns:
-        The file resource jar file.
-    """
-    resources_jar_output = ctx.actions.declare_file(ctx.label.name + "-resources.jar")
-    zipper_args = _resourcejar_args_action(ctx)
-    ctx.actions.run_shell(
-        mnemonic = "KotlinZipResourceJar",
-        inputs = ctx.files.resources + [zipper_args],
-        tools = [ctx.executable._zipper],
-        outputs = [resources_jar_output],
-        command = "{zipper} c {resources_jar_output} @{path}".format(
-            path = zipper_args.path,
-            resources_jar_output = resources_jar_output.path,
-            zipper = ctx.executable._zipper.path,
-        ),
-        progress_message = "Creating intermediate resource jar %{label}",
-    )
-    return resources_jar_output
-
 def _run_merge_jdeps_action(ctx, toolchains, jdeps, output, deps):
     """Creates a Jdeps merger action invocation."""
     args = ctx.actions.args()
@@ -341,7 +277,7 @@ def _run_merge_jdeps_action(ctx, toolchains, jdeps, output, deps):
 
     args.add("--output", output)
 
-    args.add_all("--inputs", jdeps, omit_if_empty = True)
+    args.add_all("--inputs", jdeps)
     args.add("--report_unused_deps", toolchains.kt.experimental_report_unused_deps)
 
     mnemonic = "JdepsMerge"
@@ -606,9 +542,6 @@ def kt_jvm_produce_jar_actions(ctx, rule_kind):
     generated_src_jars = []
     annotation_processing = None
     compile_jar = ctx.actions.declare_file(ctx.label.name + ".abi.jar")
-    output_jdeps = None
-    if toolchains.kt.jvm_emit_jdeps:
-        output_jdeps = ctx.actions.declare_file(ctx.label.name + ".jdeps")
 
     outputs_struct = _run_kt_java_builder_actions(
         ctx = ctx,
@@ -625,16 +558,10 @@ def kt_jvm_produce_jar_actions(ctx, rule_kind):
         transitive_runtime_jars = transitive_runtime_jars,
         plugins = plugins,
         compile_jar = compile_jar,
-        output_jdeps = output_jdeps,
     )
     output_jars = outputs_struct.output_jars
     generated_src_jars = outputs_struct.generated_src_jars
     annotation_processing = outputs_struct.annotation_processing
-
-    # If this rule has any resources declared setup a zipper action to turn them into a jar.
-    if len(ctx.files.resources) > 0:
-        output_jars.append(_build_resourcejar_action(ctx))
-    output_jars.extend(ctx.files.resource_jars)
 
     # merge outputs into final runtime jar
     output_jar = ctx.actions.declare_file(ctx.label.name + ".jar")
@@ -671,7 +598,7 @@ def kt_jvm_produce_jar_actions(ctx, rule_kind):
         output_jar = output_jar,
         compile_jar = compile_jar,
         source_jar = source_jar,
-        jdeps = output_jdeps,
+        jdeps = outputs_struct.output_jdeps,
         deps = compile_deps.deps,
         runtime_deps = [_java_info(d) for d in ctx.attr.runtime_deps],
         exports = [_java_info(d) for d in getattr(ctx.attr, "exports", [])],
@@ -698,9 +625,9 @@ def kt_jvm_produce_jar_actions(ctx, rule_kind):
                 getattr(ctx.attr, "exported_compiler_plugins", []),
                 getattr(ctx.attr, "exports", []),
             ),
-            # intellij aspect needs this.
+            # intellij aspect needs this
             outputs = struct(
-                jdeps = output_jdeps,
+                jdeps = outputs_struct.output_jdeps,
                 jars = [struct(
                     class_jar = output_jar,
                     ijar = compile_jar,
@@ -713,58 +640,6 @@ def kt_jvm_produce_jar_actions(ctx, rule_kind):
             additional_generated_source_jars = generated_src_jars,
             all_output_jars = output_jars,
         ),
-    )
-
-def kt_jvm_produce_jar_resources_actions(ctx, rule_kind):
-    """This macro sets up a compile action for a JVM resources jar.
-
-    Args:
-        ctx: Invoking rule ctx, used for attr, actions, and label.
-        rule_kind: The rule kind --e.g., `jvm_resources`.
-    Returns:
-        A struct containing the providers JavaInfo (`java`)
-    """
-
-    output_jar = ctx.actions.declare_file(ctx.label.name + ".jar")
-
-    res_cmd = ""
-    for f in ctx.files.resources:
-        target_path = ctx.expand_location(f.owner.name)
-
-        resource_strip_prefix = ctx.attr.resource_strip_prefix
-        if resource_strip_prefix:
-            if not target_path.startswith(resource_strip_prefix):
-                fail("Resource file " + target_path + " is not under the specified prefix to strip (file.root=" + f.root.path + ")")
-
-            target_path = target_path[len(resource_strip_prefix):]
-
-        if target_path[0] == "/":
-            target_path = target_path[1:]
-
-        res_cmd += target_path + "=" + f.path + "\n"
-
-    zipper_args = ctx.actions.declare_file("%s_resources_zipper_args" % ctx.label.name)
-    ctx.actions.write(zipper_args, res_cmd)
-
-    ctx.actions.run_shell(
-        mnemonic = "KotlinZipResourceJar",
-        inputs = ctx.files.resources + [zipper_args],
-        tools = [ctx.executable._zipper],
-        outputs = [output_jar],
-        command = "{zipper} c {output_jar} @{path}".format(
-            path = zipper_args.path,
-            output_jar = output_jar.path,
-            zipper = ctx.executable._zipper.path,
-        ),
-        progress_message = "Creating resource jar %{label}",
-    )
-
-    return JavaInfo(
-        output_jar = output_jar,
-        compile_jar = output_jar,
-        runtime_deps = [_java_info(d) for d in ctx.attr.runtime_deps],
-        exports = [_java_info(d) for d in getattr(ctx.attr, "exports", [])],
-        neverlink = getattr(ctx.attr, "neverlink", False),
     )
 
 def _run_kt_java_builder_actions(
@@ -781,8 +656,7 @@ def _run_kt_java_builder_actions(
         ksp_annotation_processors,
         transitive_runtime_jars,
         plugins,
-        compile_jar,
-        output_jdeps):
+        compile_jar):
     """Runs the necessary KotlinBuilder and JavaBuilder actions to compile a jar
 
     Returns:
@@ -934,24 +808,23 @@ def _run_kt_java_builder_actions(
         input_jars = compile_jars,
     )
 
+    output_jdeps = None
     if toolchains.kt.jvm_emit_jdeps:
         jdeps = []
         for java_info in java_infos:
             if java_info.outputs.jdeps:
                 jdeps.append(java_info.outputs.jdeps)
 
-        if jdeps:
+        if len(jdeps) == 1:
+            output_jdeps = jdeps[0]
+        elif jdeps:
+            output_jdeps = ctx.actions.declare_file(ctx.label.name + ".jdeps")
             _run_merge_jdeps_action(
                 ctx = ctx,
                 toolchains = toolchains,
                 jdeps = jdeps,
                 deps = compile_deps.deps,
                 output = output_jdeps,
-            )
-        else:
-            ctx.actions.symlink(
-                output = output_jdeps,
-                target_file = toolchains.kt.empty_jdeps,
             )
 
     annotation_processing = None
@@ -967,6 +840,7 @@ def _run_kt_java_builder_actions(
         output_jars = output_jars,
         generated_src_jars = generated_kapt_src_jars + generated_ksp_src_jars,
         annotation_processing = annotation_processing,
+        output_jdeps = output_jdeps,
     )
 
 def _create_annotation_processing(annotation_processors, ap_class_jar, ap_source_jar):

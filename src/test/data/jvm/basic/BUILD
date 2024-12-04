@@ -33,12 +33,12 @@ kt_jvm_library(
     module_name = "hello-module",
 )
 
-# a test resource library.
-java_library(
-    name = "resourcejar",
-    resource_strip_prefix = "src/test/data/jvm/basic/resourcejar",
-    resources = glob(["resourcejar/**"]),
-)
+# # a test resource library.
+# java_library(
+#     name = "resourcejar",
+#     resource_strip_prefix = "src/test/data/jvm/basic/resourcejar",
+#     resources = glob(["resourcejar/**"]),
+# )
 
 kt_jvm_library(
     name = "test_embed_resources",
@@ -53,13 +53,13 @@ kt_jvm_library(
     resource_jars = [":resourcejar"],
     visibility = ["//visibility:public"],
 )
-
-kt_jvm_library(
-    name = "test_embed_resources_strip_prefix",
-    srcs = glob(["testresources/src/*.kt"]),
-    resource_strip_prefix = "src/test/data/jvm/basic/testresources/resources",
-    resources = glob(["testresources/resources/**/*"]),
-)
+#
+# kt_jvm_library(
+#     name = "test_embed_resources_strip_prefix",
+#     srcs = glob(["testresources/src/*.kt"]),
+#     resource_strip_prefix = "src/test/data/jvm/basic/testresources/resources",
+#     resources = glob(["testresources/resources/**/*"]),
+# )
 
 kt_jvm_library(
     name = "conventional_strip_resources",

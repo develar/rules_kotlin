@@ -41,20 +41,20 @@ class KotlinJvmBasicAssertionTest : KotlinAssertionTestCase("src/test/data/jvm/b
         "pkg/file.txt"
       )
     }
-    jarTestCase(
-      "test_embed_resources_strip_prefix.jar",
-      description = "the rules should support the resource_strip_prefix attribute"
-    ) {
-      assertContainsEntries(
-        "testresources/",
-        "testresources/AClass.class",
-        "testresources/BClass.class",
-        "one/",
-        "one/alsoAFile.txt",
-        "one/two/",
-        "one/two/aFile.txt",
-      )
-    }
+//    jarTestCase(
+//      "test_embed_resources_strip_prefix.jar",
+//      description = "the rules should support the resource_strip_prefix attribute"
+//    ) {
+//      assertContainsEntries(
+//        "testresources/",
+//        "testresources/AClass.class",
+//        "testresources/BClass.class",
+//        "one/",
+//        "one/alsoAFile.txt",
+//        "one/two/",
+//        "one/two/aFile.txt",
+//      )
+//    }
     jarTestCase(
       "conventional_strip_resources.jar",
       description = "the rules should support conventional prefix stripping"

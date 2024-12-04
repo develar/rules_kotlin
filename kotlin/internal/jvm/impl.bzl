@@ -26,7 +26,6 @@ load(
     "//kotlin/internal/jvm:compile.bzl",
     "export_only_providers",
     _kt_jvm_produce_jar_actions = "kt_jvm_produce_jar_actions",
-    _kt_jvm_produce_jar_resources_actions = "kt_jvm_produce_jar_resources_actions",
 )
 load(
     "//kotlin/internal/utils:utils.bzl",
