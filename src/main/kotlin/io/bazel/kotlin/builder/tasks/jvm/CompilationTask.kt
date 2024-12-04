@@ -154,34 +154,33 @@ internal fun JvmCompilationTask.kaptArgs(
   plugins: InternalCompilerPlugins,
   aptMode: String,
 ): CompilationArgs {
-  val javacArgs =
-    mapOf<String, String>(
-      "-target" to info.toolchainInfo.jvm.jvmTarget,
-      "-source" to info.toolchainInfo.jvm.jvmTarget,
-    )
+  val javacArgs = mapOf<String, String>(
+    "-target" to info.toolchainInfo.jvm.jvmTarget,
+    "-source" to info.toolchainInfo.jvm.jvmTarget,
+  )
   return CompilationArgs().apply {
     xFlag("plugin", plugins.kapt.jarPath)
 
-    val values =
-      arrayOf(
-        "sources" to listOf(directories.generatedJavaSources),
-        "classes" to listOf(directories.generatedClasses),
-        "stubs" to listOf(directories.stubs),
-        "incrementalData" to listOf(directories.incrementalData),
-        "javacArguments" to listOf(javacArgs.let(::encodeMap)),
-        "correctErrorTypes" to listOf("false"),
-        "verbose" to listOf(context.whenTracing { "true" } ?: "false"),
-        "apclasspath" to inputs.processorpathsList,
-        "aptMode" to listOf(aptMode),
-      )
-    val version =
-      info.toolchainInfo.common.apiVersion
-        .toFloat()
+    val values = arrayOf(
+      "sources" to listOf(directories.generatedJavaSources),
+      "classes" to listOf(directories.generatedClasses),
+      "stubs" to listOf(directories.stubs),
+      "incrementalData" to listOf(directories.incrementalData),
+      "javacArguments" to listOf(javacArgs.let(::encodeMap)),
+      "correctErrorTypes" to listOf("false"),
+      "verbose" to listOf(context.whenTracing { "true" } ?: "false"),
+      "apclasspath" to inputs.processorpathsList,
+      "aptMode" to listOf(aptMode),
+    )
+    val version = info.toolchainInfo.common.apiVersion.toFloat()
     when {
       version < 1.5 ->
         base64Encode(
           "-P",
-          *values + ("processors" to inputs.processorsList).asKeyToCommaList(),
+          *values + run {
+            val pair = ("processors" to inputs.processorsList)
+            pair.first to listOf(pair.second.joinToString(","))
+          },
         ) { enc -> "plugin:${plugins.kapt.id}:configuration=$enc" }
       else ->
         repeatFlag(
@@ -231,16 +230,13 @@ internal fun JvmCompilationTask.kspArgs(plugins: InternalCompilerPlugins): Compi
           "allWarningsAsErrors" to listOf("false"),
         )
 
-      values.forEach { pair ->
-        pair.second.forEach { value ->
+      for (pair in values) {
+        for (value in pair.second) {
           flag(pair.first, value)
         }
       }
     }
   }
-
-private fun Pair<String, List<String>>.asKeyToCommaList() =
-  first to listOf(second.joinToString(","))
 
 internal fun JvmCompilationTask.runPlugins(
   context: CompilationTaskContext,
