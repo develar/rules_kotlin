@@ -114,9 +114,24 @@ internal fun plugins(
   return compilationArgs
 }
 
-internal fun JvmCompilationTask.preProcessingSteps(
+internal fun preProcessingSteps(
+  task: JvmCompilationTask,
   context: CompilationTaskContext,
-): JvmCompilationTask = context.execute("expand sources") { expandWithSourceJarSources() }
+): JvmCompilationTask {
+  return context.execute("expand sources") {
+    if (task.inputs.sourceJarsList.isEmpty()) {
+      task
+    } else {
+      val sourceJarExtractor = SourceJarExtractor(
+        destDir = Path.of(task.directories.temp).resolve(SOURCE_JARS_DIR),
+        fileMatcher = { str -> IS_JVM_SOURCE_FILE.test(str) || "/$MANIFEST_DIR" in str },
+      )
+      sourceJarExtractor.jarFiles.addAll(task.inputs.sourceJarsList.map { p -> Path.of(p) })
+      sourceJarExtractor.execute()
+      task.expandWithSources(sourceJarExtractor.sourcesList.iterator())
+    }
+  }
+}
 
 internal fun encodeMap(options: Map<String, String>): String {
   val os = ByteArrayOutputStream()
@@ -471,26 +486,6 @@ fun compileKotlin(
   }
   return task
 }
-
-/**
- * If any srcjars were provided expand the jars sources and create a new [JvmCompilationTask] with the
- * Java, Kotlin sources and META folder merged in.
- */
-internal fun JvmCompilationTask.expandWithSourceJarSources(): JvmCompilationTask =
-  if (inputs.sourceJarsList.isEmpty()) {
-    this
-  } else {
-    expandWithSources(
-      SourceJarExtractor(
-        destDir = Path.of(directories.temp).resolve(SOURCE_JARS_DIR),
-        fileMatcher = { str: String -> IS_JVM_SOURCE_FILE.test(str) || "/$MANIFEST_DIR" in str },
-      ).also {
-        it.jarFiles.addAll(inputs.sourceJarsList.map { p -> Path.of(p) })
-        it.execute()
-      }.sourcesList
-        .iterator(),
-    )
-  }
 
 private val Directories.stubs
   get() = Files.createDirectories(Path.of(temp).resolve("stubs")).toString()

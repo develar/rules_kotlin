@@ -54,10 +54,8 @@ class KotlinJvmTaskExecutor
       context: CompilationTaskContext,
       task: JvmCompilationTask,
     ) {
-      val preprocessedTask =
-        task
-          .preProcessingSteps(context)
-          .runPlugins(context, plugins, compiler)
+      val preprocessedTask = preProcessingSteps(task, context)
+        .runPlugins(context, plugins, compiler)
 
       context.execute("compile classes") {
         preprocessedTask.apply {
