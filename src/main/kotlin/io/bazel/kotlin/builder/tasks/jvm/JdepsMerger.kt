@@ -3,7 +3,6 @@ package io.bazel.kotlin.builder.tasks.jvm
 import com.google.devtools.build.lib.view.proto.Deps
 import io.bazel.kotlin.builder.utils.Flag
 import io.bazel.kotlin.builder.utils.jars.JarOwner
-import io.bazel.kotlin.builder.utils.jars.JarOwner.Companion.INJECTING_RULE_KIND
 import io.bazel.worker.WorkerContext
 import java.io.*
 import java.nio.file.Files
@@ -28,13 +27,10 @@ enum class JdepsMergerFlags(
  */
 class JdepsMerger {
   companion object {
-    private fun readJarOwnerFromManifest(jarPath: Path): JarOwner {
+    private fun readJarOwnerFromManifest(jarPath: Path): String? {
       JarFile(jarPath.toFile()).use { jarFile ->
-        val manifest = jarFile.manifest ?: return JarOwner(jarPath)
-        val attributes = manifest.mainAttributes
-        val label = attributes[JarOwner.TARGET_LABEL] as String? ?: return JarOwner(jarPath)
-        val injectingRuleKind = attributes[INJECTING_RULE_KIND] as String?
-        return JarOwner(jarPath, label, injectingRuleKind)
+        val manifest = jarFile.manifest ?: return null
+        return manifest.mainAttributes.getValue(JarOwner.TARGET_LABEL)
       }
     }
 
@@ -55,9 +51,9 @@ class JdepsMerger {
           Deps.Dependencies.parseFrom(input)
         }
         for (dep in deps.dependencyList) {
-          val dependency = dependencyMap[dep.path]
+          val oldDep = dependencyMap[dep.path]
           // Replace dependency if it has a stronger kind than one we encountered before.
-          if (dependency == null || dependency.kind > dep.kind) {
+          if (oldDep == null || oldDep.kind > dep.kind) {
             dependencyMap.put(dep.path, dep)
           }
         }
@@ -74,18 +70,15 @@ class JdepsMerger {
 
       val kindMap = LinkedHashMap<String, Deps.Dependency.Kind>()
 
-      // A target might produce multiple jars (Android produces _resources.jar)
-      // so we need to make sure wedon't mart the dependency as unused
-      // unless all of the jars are unused.
+      // A target might produce multiple jars (Android produces `_resources.jar`),
+      // so we need to make sure we don't mart the dependency as unused unless all the jars are unused.
       for (dep in dependencyMap.values) {
-        var label = readJarOwnerFromManifest(Path.of(dep.path)).label
-        if (label != null) {
-          if (label.startsWith("@@") || label.startsWith("@/")) {
-            label = label.substring(1)
-          }
-          if (kindMap.getOrDefault(label, Deps.Dependency.Kind.UNUSED) >= dep.kind) {
-            kindMap.put(label, dep.kind)
-          }
+        var label = readJarOwnerFromManifest(Path.of(dep.path)) ?: continue
+        if (label.startsWith("@@") || label.startsWith("@/")) {
+          label = label.substring(1)
+        }
+        if (kindMap.getOrDefault(label, Deps.Dependency.Kind.UNUSED) >= dep.kind) {
+          kindMap.put(label, dep.kind)
         }
       }
 
