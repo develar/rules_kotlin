@@ -12,9 +12,7 @@ import java.nio.charset.StandardCharsets
 import java.nio.file.FileSystems
 import java.nio.file.Files
 import java.nio.file.Path
-import java.nio.file.Paths
 import java.util.jar.JarFile
-import kotlin.io.path.outputStream
 
 /**
  * Declares the flags used by the java builder.
@@ -37,17 +35,12 @@ class JdepsMerger {
     private val FLAGFILE_RE = Regex("""^--flagfile=((.*)-(\d+).params)$""")
 
     private fun readJarOwnerFromManifest(jarPath: Path): JarOwner {
-      try {
-        JarFile(jarPath.toFile()).use { jarFile ->
-          val manifest = jarFile.manifest ?: return JarOwner(jarPath)
-          val attributes = manifest.mainAttributes
-          val label = attributes[JarOwner.TARGET_LABEL] as String? ?: return JarOwner(jarPath)
-          val injectingRuleKind = attributes[INJECTING_RULE_KIND] as String?
-          return JarOwner(jarPath, label, injectingRuleKind)
-        }
-      } catch (e: IOException) {
-        // This jar file pretty much has to exist.
-        throw UncheckedIOException(e)
+      JarFile(jarPath.toFile()).use { jarFile ->
+        val manifest = jarFile.manifest ?: return JarOwner(jarPath)
+        val attributes = manifest.mainAttributes
+        val label = attributes[JarOwner.TARGET_LABEL] as String? ?: return JarOwner(jarPath)
+        val injectingRuleKind = attributes[INJECTING_RULE_KIND] as String?
+        return JarOwner(jarPath, label, injectingRuleKind)
       }
     }
 
@@ -91,7 +84,7 @@ class JdepsMerger {
       // so we need to make sure wedon't mart the dependency as unused
       // unless all of the jars are unused.
       for (dep in dependencyMap.values) {
-        var label = readJarOwnerFromManifest(Paths.get(dep.path)).label
+        var label = readJarOwnerFromManifest(Path.of(dep.path)).label
         if (label != null) {
           if (label.startsWith("@@") || label.startsWith("@/")) {
             label = label.substring(1)
