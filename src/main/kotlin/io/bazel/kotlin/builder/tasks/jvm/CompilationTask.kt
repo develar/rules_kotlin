@@ -172,24 +172,11 @@ internal fun JvmCompilationTask.kaptArgs(
     "apclasspath" to inputs.processorpathsList,
     "aptMode" to listOf(aptMode),
   )
-  val version = info.toolchainInfo.common.apiVersion.toFloat()
-  when {
-    version < 1.5 ->
-      compilationArgs.base64Encode(
-        "-P",
-        *values + run {
-          val pair = ("processors" to inputs.processorsList)
-          pair.first to listOf(pair.second.joinToString(","))
-        },
-      ) { enc -> "plugin:${plugins.kapt.id}:configuration=$enc" }
-
-    else ->
-      compilationArgs.repeatFlag(
-        "-P",
-        *values + ("processors" to inputs.processorsList),
-      ) { option, value ->
-        "plugin:${plugins.kapt.id}:$option=$value"
-      }
+  compilationArgs.repeatFlag(
+    "-P",
+    *values + ("processors" to inputs.processorsList),
+  ) { option, value ->
+    "plugin:${plugins.kapt.id}:$option=$value"
   }
   return compilationArgs
 }
