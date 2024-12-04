@@ -16,34 +16,31 @@ import java.nio.file.Paths
 import java.util.jar.JarFile
 
 /**
+ * Declares the flags used by the java builder.
+ */
+enum class JdepsMergerFlags(
+  override val flag: String,
+) : Flag {
+  INPUTS("--inputs"),
+  OUTPUT("--output"),
+  TARGET_LABEL("--target_label"),
+  REPORT_UNUSED_DEPS("--report_unused_deps"),
+}
+
+/**
  * Persistent worker capable command line program for merging multiple Jdeps files into a single
  * file.
  */
 class JdepsMerger {
   companion object {
-    @JvmStatic
     private val FLAGFILE_RE = Regex("""^--flagfile=((.*)-(\d+).params)$""")
-
-    /**
-     * Declares the flags used by the java builder.
-     */
-    enum class JdepsMergerFlags(
-      override val flag: String,
-    ) : Flag {
-      INPUTS("--inputs"),
-      OUTPUT("--output"),
-      TARGET_LABEL("--target_label"),
-      REPORT_UNUSED_DEPS("--report_unused_deps"),
-    }
 
     private fun readJarOwnerFromManifest(jarPath: Path): JarOwner {
       try {
         JarFile(jarPath.toFile()).use { jarFile ->
           val manifest = jarFile.manifest ?: return JarOwner(jarPath)
           val attributes = manifest.mainAttributes
-          val label =
-            attributes[JarOwner.TARGET_LABEL] as String?
-              ?: return JarOwner(jarPath)
+          val label = attributes[JarOwner.TARGET_LABEL] as String? ?: return JarOwner(jarPath)
           val injectingRuleKind = attributes[INJECTING_RULE_KIND] as String?
           return JarOwner(jarPath, label, injectingRuleKind)
         }

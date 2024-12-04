@@ -5,7 +5,6 @@ import com.google.devtools.build.lib.view.proto.Deps
 import com.google.devtools.build.lib.view.proto.Deps.Dependency
 import io.bazel.kotlin.builder.DaggerJdepsMergerTestComponent
 import io.bazel.kotlin.builder.tasks.MergeJdeps
-import io.bazel.kotlin.builder.tasks.jvm.JdepsMerger.Companion.JdepsMergerFlags
 import io.bazel.kotlin.builder.utils.Flag
 import io.bazel.kotlin.builder.utils.jars.JarCreator
 import io.bazel.worker.Status
