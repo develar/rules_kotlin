@@ -1,15 +1,11 @@
 package io.bazel.kotlin.builder.tasks.jvm
 
 import com.google.devtools.build.lib.view.proto.Deps
-import io.bazel.kotlin.builder.utils.ArgMap
-import io.bazel.kotlin.builder.utils.ArgMaps
 import io.bazel.kotlin.builder.utils.Flag
 import io.bazel.kotlin.builder.utils.jars.JarOwner
 import io.bazel.kotlin.builder.utils.jars.JarOwner.Companion.INJECTING_RULE_KIND
 import io.bazel.worker.WorkerContext
 import java.io.*
-import java.nio.charset.StandardCharsets
-import java.nio.file.FileSystems
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.jar.JarFile
@@ -32,8 +28,6 @@ enum class JdepsMergerFlags(
  */
 class JdepsMerger {
   companion object {
-    private val FLAGFILE_RE = Regex("""^--flagfile=((.*)-(\d+).params)$""")
-
     private fun readJarOwnerFromManifest(jarPath: Path): JarOwner {
       JarFile(jarPath.toFile()).use { jarFile ->
         val manifest = jarFile.manifest ?: return JarOwner(jarPath)
@@ -119,28 +113,5 @@ class JdepsMerger {
       }
       return 0
     }
-  }
-
-  private fun getArgs(args: List<String>): ArgMap {
-    check(args.isNotEmpty()) { "expected at least a single arg got: ${args.joinToString(" ")}" }
-    val lines =
-      FLAGFILE_RE.matchEntire(args[0])?.groups?.get(1)?.let {
-        Files.readAllLines(FileSystems.getDefault().getPath(it.value), StandardCharsets.UTF_8)
-      } ?: args
-
-    return ArgMaps.from(lines)
-  }
-
-  fun execute(
-    ctx: WorkerContext.TaskContext,
-    args: List<String>,
-  ): Int {
-    val argMap = getArgs(args)
-    val inputs = argMap.mandatory(JdepsMergerFlags.INPUTS)
-    val output = argMap.mandatorySingle(JdepsMergerFlags.OUTPUT)
-    val label = argMap.mandatorySingle(JdepsMergerFlags.TARGET_LABEL)
-    val reportUnusedDeps = argMap.mandatorySingle(JdepsMergerFlags.REPORT_UNUSED_DEPS)
-
-    return merge(ctx, label, inputs, output, reportUnusedDeps)
   }
 }

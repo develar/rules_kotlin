@@ -3,7 +3,6 @@ package io.bazel.kotlin.builder.tasks.jvm
 import com.google.common.truth.Truth.assertThat
 import com.google.devtools.build.lib.view.proto.Deps
 import com.google.devtools.build.lib.view.proto.Deps.Dependency
-import io.bazel.kotlin.builder.DaggerJdepsMergerTestComponent
 import io.bazel.kotlin.builder.tasks.MergeJdeps
 import io.bazel.kotlin.builder.utils.Flag
 import io.bazel.kotlin.builder.utils.jars.JarCreator
@@ -53,8 +52,6 @@ class JdepsMergerTest {
 
   @Test
   fun `merge all deps`() {
-    val merger = DaggerJdepsMergerTestComponent.builder().build().jdepsMerger()
-
     val kotlinJdeps = jdeps("kt.jdeps") {
       addDependency(
         with(Dependency.newBuilder()) {
@@ -79,7 +76,7 @@ class JdepsMergerTest {
 
     val result = WorkerContext.run {
       doTask("jdepsmerge") { taskCtx ->
-        MergeJdeps(merger = merger).invoke(
+        MergeJdeps().invoke(
           taskCtx,
           args {
             flag(JdepsMergerFlags.TARGET_LABEL, "//foo/bar:baz")
@@ -104,8 +101,6 @@ class JdepsMergerTest {
 
   @Test
   fun `merge conflicting deps`() {
-    val merger = DaggerJdepsMergerTestComponent.builder().build().jdepsMerger()
-
     val kotlinJdeps = jdeps("kt.jdeps") {
       addDependency(
         with(Dependency.newBuilder()) {
@@ -130,7 +125,7 @@ class JdepsMergerTest {
 
     val result = WorkerContext.run {
       doTask("jdepsmerge") { taskCtx ->
-        MergeJdeps(merger = merger).invoke(
+        MergeJdeps().invoke(
           taskCtx,
           args {
             flag(JdepsMergerFlags.TARGET_LABEL, "//foo/bar:baz")
@@ -152,8 +147,6 @@ class JdepsMergerTest {
 
   @Test
   fun `unused deps report warning`() {
-    val merger = DaggerJdepsMergerTestComponent.builder().build().jdepsMerger()
-
     val unusedKotlinDep = ktJvmLibrary("kotlin_dep")
     val kotlinJdeps = jdeps("kt.jdeps") {
       addDependency(
@@ -179,7 +172,7 @@ class JdepsMergerTest {
 
     val result = WorkerContext.run {
       doTask("jdepsmerge") { taskCtx ->
-        MergeJdeps(merger = merger).invoke(
+        MergeJdeps().invoke(
           taskCtx,
           args {
             input(kotlinJdeps)
@@ -204,8 +197,6 @@ class JdepsMergerTest {
 
   @Test
   fun `unused deps report error`() {
-    val merger = DaggerJdepsMergerTestComponent.builder().build().jdepsMerger()
-
     val unusedKotlinDep = ktJvmLibrary("kotlin_dep")
     val kotlinJdeps = jdeps("kt.jdeps") {
       addDependency(
@@ -229,7 +220,7 @@ class JdepsMergerTest {
 
     val mergedJdeps = out("merged.jdeps")
 
-    val worker = MergeJdeps(merger)
+    val worker = MergeJdeps()
     val result = WorkerContext.run {
       doTask("jdepsmerge") { taskCtx ->
         worker.invoke(
@@ -257,8 +248,6 @@ class JdepsMergerTest {
 
   @Test
   fun `unused deps multiple jars for label`() {
-    val merger = DaggerJdepsMergerTestComponent.builder().build().jdepsMerger()
-
     val unusedKotlinDepA = ktJvmLibrary("kotlin_dep", "_a")
     val unusedKotlinDepB = ktJvmLibrary("kotlin_dep", "_b")
     val kotlinJdeps = jdeps("kt.jdeps") {
@@ -282,7 +271,7 @@ class JdepsMergerTest {
 
     val result = WorkerContext.run {
       doTask("jdepsmerge") { taskCtx ->
-        MergeJdeps(merger = merger).invoke(
+        MergeJdeps().invoke(
           taskCtx,
           args {
             input(kotlinJdeps)
@@ -299,8 +288,6 @@ class JdepsMergerTest {
 
   @Test
   fun `used deps multiple jars for label`() {
-    val merger = DaggerJdepsMergerTestComponent.builder().build().jdepsMerger()
-
     val unusedKotlinDep = ktJvmLibrary("kotlin_dep", "_a")
     val usedKotlinDep = ktJvmLibrary("kotlin_dep", "_b")
     val kotlinJdeps = jdeps("kt.jdeps") {
@@ -324,7 +311,7 @@ class JdepsMergerTest {
 
     val result = WorkerContext.run {
       doTask("jdepsmerge") { taskCtx ->
-        MergeJdeps(merger = merger).invoke(
+        MergeJdeps().invoke(
           taskCtx,
           args {
             input(kotlinJdeps)
