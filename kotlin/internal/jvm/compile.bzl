@@ -66,11 +66,7 @@ def _java_info(target):
 
 def _deps_artifacts(toolchains, targets):
     """Collect Jdeps artifacts if required."""
-    if not toolchains.kt.experimental_report_unused_deps == "off":
-        deps_artifacts = [t[JavaInfo].outputs.jdeps for t in targets if JavaInfo in t and t[JavaInfo].outputs.jdeps]
-    else:
-        deps_artifacts = []
-
+    deps_artifacts = [t[JavaInfo].outputs.jdeps for t in targets if JavaInfo in t and t[JavaInfo].outputs.jdeps] if  toolchains.kt.experimental_report_unused_deps else []
     return depset(deps_artifacts)
 
 def _partitioned_srcs(srcs):
@@ -102,6 +98,14 @@ def _compiler_toolchains(ctx):
         java_runtime = find_java_runtime_toolchain(ctx, ctx.attr._host_javabase),
     )
 
+def _compute_transitive_jars(dep_infos, prune_transitive_deps):
+    compile_jars = [d.compile_jars for d in dep_infos]
+    if prune_transitive_deps:
+        return compile_jars
+
+    transitive_compile_time_jars = [d.transitive_compile_time_jars for d in dep_infos]
+    return compile_jars + transitive_compile_time_jars
+
 def _jvm_deps(ctx, toolchains, associated_targets, deps, runtime_deps = []):
     """Encapsulates jvm dependency metadata."""
     diff = _sets.intersection(
@@ -115,21 +119,9 @@ def _jvm_deps(ctx, toolchains, associated_targets, deps, runtime_deps = []):
         )
     dep_infos = [_java_info(d) for d in associated_targets + deps] + [toolchains.kt.jvm_stdlibs]
 
-    # Reduced classpath, exclude transitive deps from compilation
-    if (toolchains.kt.experimental_prune_transitive_deps and
-        not "kt_experimental_prune_transitive_deps_incompatible" in ctx.attr.tags):
-        transitive = [
-            d.compile_jars
-            for d in dep_infos
-        ]
-    else:
-        transitive = [
-            d.compile_jars
-            for d in dep_infos
-        ] + [
-            d.transitive_compile_time_jars
-            for d in dep_infos
-        ]
+    # reduced classpath, exclude transitive deps from compilation
+    prune_transitive_deps = toolchains.kt.experimental_prune_transitive_deps and "kt_experimental_prune_transitive_deps_incompatible" not in ctx.attr.tags
+    transitive = _compute_transitive_jars(dep_infos, prune_transitive_deps)
 
     return struct(
         deps = dep_infos,
@@ -295,7 +287,7 @@ def _run_merge_jdeps_action(ctx, toolchains, jdeps, output, deps):
         mnemonic = mnemonic,
         inputs = inputs,
         outputs = [output],
-        executable = toolchains.kt.jdeps_merger.files_to_run.executable,
+        executable = ctx.attr.jdeps_merger.files_to_run.executable,
         execution_requirements = toolchains.kt.execution_requirements,
         arguments = [
             ctx.actions.args().add_all(toolchains.kt.builder_args),
@@ -798,7 +790,7 @@ def _run_kt_java_builder_actions(
         ]
         java_infos.append(java_info)
 
-    # Merge ABI jars into final compile jar.
+    # merge ABI jars into final compile jar
     _fold_jars_action(
         ctx,
         rule_kind = rule_kind,
@@ -810,10 +802,7 @@ def _run_kt_java_builder_actions(
 
     output_jdeps = None
     if toolchains.kt.jvm_emit_jdeps:
-        jdeps = []
-        for java_info in java_infos:
-            if java_info.outputs.jdeps:
-                jdeps.append(java_info.outputs.jdeps)
+        jdeps = [java_info.outputs.jdeps for java_info in java_infos if java_info.outputs.jdeps]
 
         if len(jdeps) == 1:
             output_jdeps = jdeps[0]
