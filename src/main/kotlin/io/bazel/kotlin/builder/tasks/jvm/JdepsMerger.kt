@@ -14,6 +14,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.util.jar.JarFile
+import kotlin.io.path.outputStream
 
 /**
  * Declares the flags used by the java builder.
@@ -62,7 +63,7 @@ class JdepsMerger {
       rootBuilder.ruleLabel = label
 
       val dependencyMap = sortedMapOf<String, Deps.Dependency>()
-      inputs.forEach { input ->
+      for (input in inputs) {
         BufferedInputStream(Files.newInputStream(Path.of(input))).use {
           val deps: Deps.Dependencies = Deps.Dependencies.parseFrom(it)
           deps.dependencyList.forEach {
@@ -78,11 +79,8 @@ class JdepsMerger {
       rootBuilder.addAllDependency(dependencyMap.values)
 
       rootBuilder.success = true
-      rootBuilder.build().toByteArray()
 
-      BufferedOutputStream(File(output).outputStream()).use {
-        it.write(rootBuilder.build().toByteArray())
-      }
+      Files.write(Path.of(output), rootBuilder.build().toByteArray())
 
       if (reportUnusedDeps != "off") {
         val kindMap = mutableMapOf<String, Deps.Dependency.Kind>()
