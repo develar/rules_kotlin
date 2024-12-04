@@ -58,12 +58,11 @@ def kt_bootstrap_binary(
         name,
         main_class,
         runtime_deps,
-        shade_rules,
+        shade_rules = None,
         jvm_flags = [],
         data = [],
         visibility = ["//visibility:public"]):
     raw = name + "_raw"
-    jar_jared = name + "_jarjar"
 
     java_binary(
         name = raw,
@@ -71,13 +70,16 @@ def kt_bootstrap_binary(
         runtime_deps = runtime_deps,
     )
 
-    # Shaded to ensure that libraries it uses are not leaked to
-    # the code it's running against (e.g. dagger)
-    jar_jar(
-        name = jar_jared,
-        input_jar = ":" + raw + "_deploy.jar",
-        rules = shade_rules,
-    )
+    jar_jared = name
+
+    # shaded to ensure that libraries it uses are not leaked to the code it's running against (e.g. dagger)
+    if not shade_rules == None:
+        jar_jared += "_jarjar"
+        jar_jar(
+            name = jar_jared,
+            input_jar = ":" + raw + "_deploy.jar",
+            rules = shade_rules,
+        )
 
     java_binary(
         name = name,

@@ -1,4 +1,5 @@
 load("//src/main/kotlin:bootstrap.bzl", "kt_bootstrap_binary", "kt_bootstrap_library")
+load("@rules_java//java:defs.bzl", "java_binary")
 
 kt_bootstrap_library(
     name = "build_lib",
@@ -65,11 +66,9 @@ kt_bootstrap_library(
     ],
 )
 
-kt_bootstrap_binary(
+java_binary(
     name = "merge_jdeps",
-    data = [],
     main_class = "io.bazel.kotlin.builder.cmd.MergeJdeps",
-    shade_rules = "//src/main/kotlin:shade.jarjar",
     visibility = ["//src:__subpackages__"],
     runtime_deps = [":merge_jdeps_lib"],
 )

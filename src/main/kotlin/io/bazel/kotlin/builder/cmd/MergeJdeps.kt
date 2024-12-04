@@ -18,7 +18,6 @@
 package io.bazel.kotlin.builder.cmd
 
 import io.bazel.kotlin.builder.tasks.MergeJdeps
-import io.bazel.kotlin.builder.tasks.jvm.JdepsMerger
 import io.bazel.worker.Worker
 import kotlin.system.exitProcess
 

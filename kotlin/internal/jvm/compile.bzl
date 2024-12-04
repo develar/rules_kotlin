@@ -331,7 +331,7 @@ def _build_resourcejar_action(ctx):
     )
     return resources_jar_output
 
-def _run_merge_jdeps_action(ctx, toolchains, jdeps, outputs, deps):
+def _run_merge_jdeps_action(ctx, toolchains, jdeps, output, deps):
     """Creates a Jdeps merger action invocation."""
     args = ctx.actions.args()
     args.set_param_file_format("multiline")
@@ -339,8 +339,7 @@ def _run_merge_jdeps_action(ctx, toolchains, jdeps, outputs, deps):
 
     args.add("--target_label", ctx.label)
 
-    for f, path in outputs.items():
-        args.add("--" + f, path)
+    args.add("--output", output)
 
     args.add_all("--inputs", jdeps, omit_if_empty = True)
     args.add("--report_unused_deps", toolchains.kt.experimental_report_unused_deps)
@@ -353,14 +352,13 @@ def _run_merge_jdeps_action(ctx, toolchains, jdeps, outputs, deps):
 
     inputs = depset(jdeps)
     if not toolchains.kt.experimental_report_unused_deps == "off":
-        # For sandboxing to work, and for this action to be deterministic, the compile jars need to be passed as inputs
+        # for sandboxing to work, and for this action to be deterministic, the compile jars need to be passed as inputs
         inputs = depset(jdeps, transitive = [depset([], transitive = [dep.transitive_compile_time_jars for dep in deps])])
 
     ctx.actions.run(
         mnemonic = mnemonic,
         inputs = inputs,
-        tools = [toolchains.kt.jdeps_merger.files_to_run, toolchains.kt.jvm_stdlibs.compile_jars],
-        outputs = [f for f in outputs.values()],
+        outputs = [output],
         executable = toolchains.kt.jdeps_merger.files_to_run.executable,
         execution_requirements = toolchains.kt.execution_requirements,
         arguments = [
@@ -948,7 +946,7 @@ def _run_kt_java_builder_actions(
                 toolchains = toolchains,
                 jdeps = jdeps,
                 deps = compile_deps.deps,
-                outputs = {"output": output_jdeps},
+                output = output_jdeps,
             )
         else:
             ctx.actions.symlink(
