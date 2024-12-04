@@ -158,39 +158,40 @@ internal fun JvmCompilationTask.kaptArgs(
     "-target" to info.toolchainInfo.jvm.jvmTarget,
     "-source" to info.toolchainInfo.jvm.jvmTarget,
   )
-  return CompilationArgs().apply {
-    xFlag("plugin", plugins.kapt.jarPath)
+  val compilationArgs = CompilationArgs()
+  compilationArgs.xFlag("plugin", plugins.kapt.jarPath)
 
-    val values = arrayOf(
-      "sources" to listOf(directories.generatedJavaSources),
-      "classes" to listOf(directories.generatedClasses),
-      "stubs" to listOf(directories.stubs),
-      "incrementalData" to listOf(directories.incrementalData),
-      "javacArguments" to listOf(javacArgs.let(::encodeMap)),
-      "correctErrorTypes" to listOf("false"),
-      "verbose" to listOf(context.whenTracing { "true" } ?: "false"),
-      "apclasspath" to inputs.processorpathsList,
-      "aptMode" to listOf(aptMode),
-    )
-    val version = info.toolchainInfo.common.apiVersion.toFloat()
-    when {
-      version < 1.5 ->
-        base64Encode(
-          "-P",
-          *values + run {
-            val pair = ("processors" to inputs.processorsList)
-            pair.first to listOf(pair.second.joinToString(","))
-          },
-        ) { enc -> "plugin:${plugins.kapt.id}:configuration=$enc" }
-      else ->
-        repeatFlag(
-          "-P",
-          *values + ("processors" to inputs.processorsList),
-        ) { option, value ->
-          "plugin:${plugins.kapt.id}:$option=$value"
-        }
-    }
+  val values = arrayOf(
+    "sources" to listOf(directories.generatedJavaSources),
+    "classes" to listOf(directories.generatedClasses),
+    "stubs" to listOf(directories.stubs),
+    "incrementalData" to listOf(directories.incrementalData),
+    "javacArguments" to listOf(javacArgs.let(::encodeMap)),
+    "correctErrorTypes" to listOf("false"),
+    "verbose" to listOf(context.whenTracing { "true" } ?: "false"),
+    "apclasspath" to inputs.processorpathsList,
+    "aptMode" to listOf(aptMode),
+  )
+  val version = info.toolchainInfo.common.apiVersion.toFloat()
+  when {
+    version < 1.5 ->
+      compilationArgs.base64Encode(
+        "-P",
+        *values + run {
+          val pair = ("processors" to inputs.processorsList)
+          pair.first to listOf(pair.second.joinToString(","))
+        },
+      ) { enc -> "plugin:${plugins.kapt.id}:configuration=$enc" }
+
+    else ->
+      compilationArgs.repeatFlag(
+        "-P",
+        *values + ("processors" to inputs.processorsList),
+      ) { option, value ->
+        "plugin:${plugins.kapt.id}:$option=$value"
+      }
   }
+  return compilationArgs
 }
 
 internal fun JvmCompilationTask.kspArgs(plugins: InternalCompilerPlugins): CompilationArgs =
