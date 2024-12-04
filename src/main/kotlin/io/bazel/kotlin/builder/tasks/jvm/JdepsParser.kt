@@ -54,21 +54,12 @@ internal class JdepsParser private constructor(
     }
   }
 
-  private fun addModuleDependency(
-    module: String,
-    jarFile: String,
-  ) {
-    val entry =
-      moduleDeps.computeIfAbsent(module) {
-        mutableListOf<String>()
-      }
-    entry.add(jarFile)
-  }
-
   private fun processLine(line: String) {
-    val parts = line.split(arrowRegex).dropLastWhile { it.isEmpty() }.toTypedArray()
+    val parts = line.split(arrowRegex).dropLastWhile { it.isEmpty() }
     if (parts.size == 2 && parts[1].endsWith(".jar")) {
-      addModuleDependency(parts[0], parts[1])
+      moduleDeps.computeIfAbsent(parts[0]) {
+        mutableListOf()
+      }.add(parts[1])
     }
   }
 
@@ -111,7 +102,7 @@ internal class JdepsParser private constructor(
       lines: List<String>,
       isImplicit: Predicate<String>,
     ): Deps.Dependencies {
-      val filename = Paths.get(jarFile).fileName.toString()
+      val filename = Path.of(jarFile).fileName.toString()
       val jdepsParser = JdepsParser(isImplicit)
 
       classPath.forEach { x -> jdepsParser.consumeJarLine(x, Deps.Dependency.Kind.UNUSED) }
