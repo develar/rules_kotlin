@@ -64,14 +64,14 @@ class JdepsMerger {
 
       val dependencyMap = sortedMapOf<String, Deps.Dependency>()
       for (input in inputs) {
-        BufferedInputStream(Files.newInputStream(Path.of(input))).use {
-          val deps: Deps.Dependencies = Deps.Dependencies.parseFrom(it)
-          deps.dependencyList.forEach {
-            val dependency = dependencyMap[it.path]
-            // Replace dependency if it has a stronger kind than one we encountered before.
-            if (dependency == null || dependency.kind > it.kind) {
-              dependencyMap.put(it.path, it)
-            }
+        val deps = BufferedInputStream(Files.newInputStream(Path.of(input))).use { input ->
+          Deps.Dependencies.parseFrom(input)
+        }
+        for (dep in deps.dependencyList) {
+          val dependency = dependencyMap[dep.path]
+          // Replace dependency if it has a stronger kind than one we encountered before.
+          if (dependency == null || dependency.kind > dep.kind) {
+            dependencyMap.put(dep.path, dep)
           }
         }
       }
