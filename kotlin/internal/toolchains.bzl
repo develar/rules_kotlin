@@ -195,7 +195,7 @@ _kt_toolchain = rule(
         ),
         "experimental_multiplex_workers": attr.bool(
             doc = """Run workers in multiplex mode.""",
-            default = False,
+            default = True,
         ),
         "experimental_use_abi_jars": attr.bool(
             doc = """Compile using abi jars. Can be disabled for an individual target using the tag
