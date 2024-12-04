@@ -26,7 +26,6 @@ internal class JdepsParser private constructor(
 ) {
   private val depMap = HashMap<String, Deps.Dependency.Builder>()
   private val moduleDeps = HashMap<String, MutableList<String>>()
-  private val arrowRegex = " -> ".toRegex()
 
   private fun consumeJarLine(
     classJarPath: String,
@@ -55,7 +54,7 @@ internal class JdepsParser private constructor(
   }
 
   private fun processLine(line: String) {
-    val parts = line.split(arrowRegex).dropLastWhile { it.isEmpty() }
+    val parts = line.split(" -> ").dropLastWhile { it.isEmpty() }
     if (parts.size == 2 && parts[1].endsWith(".jar")) {
       moduleDeps.computeIfAbsent(parts[0]) {
         mutableListOf()
