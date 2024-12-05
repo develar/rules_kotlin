@@ -15,9 +15,8 @@ load("@rules_java//java:defs.bzl", "java_library")
 
 java_library(
     name = "builder",
-    srcs = glob(["*.java"]),
     visibility = ["//src:__subpackages__"],
-    deps = [
+    runtime_deps = [
         "//kotlin/compiler:annotations",
         "//kotlin/compiler:kotlin-stdlib",
         "//kotlin/compiler:kotlin-stdlib-jdk7",

@@ -17,23 +17,45 @@
 
 package io.bazel.kotlin.builder.cmd
 
-import io.bazel.kotlin.builder.DaggerKotlinBuilderComponent
-import io.bazel.kotlin.builder.toolchain.KotlinToolchain.Companion.createToolchain
+import io.bazel.kotlin.builder.tasks.KotlinBuilder
+import io.bazel.kotlin.builder.tasks.jvm.InternalCompilerPlugins
+import io.bazel.kotlin.builder.tasks.jvm.KotlinJvmTaskExecutor
+import io.bazel.kotlin.builder.toolchain.KotlinToolchain
+import io.bazel.worker.Status
+import io.bazel.worker.Work
 import io.bazel.worker.Worker
+import io.bazel.worker.WorkerContext
 import kotlin.system.exitProcess
 
 object Build {
   @JvmStatic
   fun main(args: Array<String>) {
-    Worker
-      .from(args.toList()) {
-        start(
-          DaggerKotlinBuilderComponent
-            .builder()
-            .toolchain(createToolchain())
-            .build()
-            .work(),
-        )
-      }.run(::exitProcess)
+    val status = Worker.from(args.toList()) {
+      val toolchain = KotlinToolchain.createToolchain()
+      val builder = KotlinBuilder(
+        jvmTaskExecutor = KotlinJvmTaskExecutor(
+          compiler = KotlinToolchain.KotlincInvoker(toolchain),
+          plugins = InternalCompilerPlugins(
+            jvmAbiGen = toolchain.jvmAbiGen,
+            skipCodeGen = toolchain.skipCodeGen,
+            kapt = toolchain.kapt3Plugin,
+            jdeps = toolchain.jdepsGen,
+            kspSymbolProcessingApi = toolchain.kspSymbolProcessingApi,
+            kspSymbolProcessingCommandLine = toolchain.kspSymbolProcessingCommandLine,
+          ),
+        ),
+      )
+      start(
+        object : Work {
+          override fun invoke(
+            ctx: WorkerContext.TaskContext,
+            args: Iterable<String>,
+          ): Status {
+            return if (builder.build(ctx, args.toList()) == 0) Status.SUCCESS else Status.ERROR
+          }
+        },
+      )
+    }
+    exitProcess(status)
   }
 }

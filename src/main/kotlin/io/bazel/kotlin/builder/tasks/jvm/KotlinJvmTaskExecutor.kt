@@ -29,10 +29,7 @@ import javax.inject.Singleton
  */
 const val X_FRIENDS_PATH_SEPARATOR = ","
 
-@Singleton
-class KotlinJvmTaskExecutor
-  @Inject
-  internal constructor(
+class KotlinJvmTaskExecutor(
     private val compiler: KotlinToolchain.KotlincInvoker,
     private val plugins: InternalCompilerPlugins,
   ) {

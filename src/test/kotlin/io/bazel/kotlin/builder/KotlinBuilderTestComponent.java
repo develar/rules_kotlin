@@ -17,16 +17,10 @@
 
 package io.bazel.kotlin.builder;
 
-import dagger.BindsInstance;
-import dagger.Component;
 import io.bazel.kotlin.builder.tasks.KotlinBuilder;
 import io.bazel.kotlin.builder.tasks.jvm.KotlinJvmTaskExecutor;
 import io.bazel.kotlin.builder.toolchain.KotlinToolchain;
 
-import javax.inject.Singleton;
-
-@Singleton
-@dagger.Component(modules = {KotlinBuilderComponent.Module.class})
 public interface KotlinBuilderTestComponent {
 
     KotlinBuilder kotlinBuilder();
@@ -35,9 +29,7 @@ public interface KotlinBuilderTestComponent {
 
     KotlinJvmTaskExecutor jvmTaskExecutor();
 
-    @Component.Builder
     interface Builder {
-        @BindsInstance
         Builder toolchain(KotlinToolchain toolchain);
 
         KotlinBuilderTestComponent build();

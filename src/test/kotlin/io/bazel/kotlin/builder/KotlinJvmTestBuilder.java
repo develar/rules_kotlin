@@ -20,10 +20,13 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import io.bazel.kotlin.builder.Deps.AnnotationProcessor;
 import io.bazel.kotlin.builder.Deps.Dep;
+import io.bazel.kotlin.builder.tasks.KotlinBuilder;
+import io.bazel.kotlin.builder.tasks.jvm.InternalCompilerPlugins;
+import io.bazel.kotlin.builder.tasks.jvm.KotlinJvmTaskExecutor;
 import io.bazel.kotlin.builder.toolchain.CompilationTaskContext;
+import io.bazel.kotlin.builder.toolchain.KotlinToolchain;
 import io.bazel.kotlin.model.CompilationTaskInfo;
 import io.bazel.kotlin.model.JvmCompilationTask;
-import io.bazel.kotlin.model.KotlinToolchainInfo;
 
 import java.util.EnumSet;
 import java.util.HashSet;
@@ -92,11 +95,36 @@ public final class KotlinJvmTestBuilder extends KotlinAbstractTestBuilder<JvmCom
         return executeTask(component().jvmTaskExecutor()::execute, setup);
     }
 
-    private static KotlinBuilderTestComponent component() {
-        if (component == null) {
-            component = DaggerKotlinBuilderTestComponent.builder()
-                    .toolchain(toolchainForTest())
-                    .build();
+  private static KotlinBuilderTestComponent component() {
+    if (component == null) {
+      KotlinToolchain toolchain = toolchainForTest();
+      KotlinJvmTaskExecutor executor = new KotlinJvmTaskExecutor(
+        new KotlinToolchain.KotlincInvoker(toolchain),
+        new InternalCompilerPlugins(
+          toolchain.jvmAbiGen,
+          toolchain.skipCodeGen,
+          toolchain.kapt3Plugin,
+          toolchain.jdepsGen,
+          toolchain.kspSymbolProcessingApi,
+          toolchain.kspSymbolProcessingCommandLine
+        )
+      );
+          component = new KotlinBuilderTestComponent() {
+              @Override
+              public KotlinBuilder kotlinBuilder() {
+                return null;
+              }
+
+              @Override
+              public KotlinToolchain toolchain() {
+                return toolchain;
+              }
+
+              @Override
+              public KotlinJvmTaskExecutor jvmTaskExecutor() {
+                return null;
+              }
+            };
         }
         return component;
     }

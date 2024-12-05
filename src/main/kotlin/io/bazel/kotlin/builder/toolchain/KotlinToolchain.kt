@@ -27,12 +27,12 @@ import javax.inject.Singleton
 
 class KotlinToolchain private constructor(
   private val baseJars: List<File>,
-  val kapt3Plugin: CompilerPlugin,
-  val jvmAbiGen: CompilerPlugin,
-  val skipCodeGen: CompilerPlugin,
-  val jdepsGen: CompilerPlugin,
-  val kspSymbolProcessingApi: CompilerPlugin,
-  val kspSymbolProcessingCommandLine: CompilerPlugin,
+  @JvmField val kapt3Plugin: CompilerPlugin,
+  @JvmField val jvmAbiGen: CompilerPlugin,
+  @JvmField val skipCodeGen: CompilerPlugin,
+  @JvmField val jdepsGen: CompilerPlugin,
+  @JvmField val kspSymbolProcessingApi: CompilerPlugin,
+  @JvmField val kspSymbolProcessingCommandLine: CompilerPlugin,
 ) {
   companion object {
     private val JVM_ABI_PLUGIN by lazy {
@@ -121,9 +121,8 @@ class KotlinToolchain private constructor(
 
     internal val NO_ARGS = arrayOf<Any>()
 
-    @JvmStatic
-    fun createToolchain(): KotlinToolchain =
-      createToolchain(
+    fun createToolchain(): KotlinToolchain {
+      return createToolchain(
         KOTLINC.verified().absoluteFile,
         COMPILER.verified().absoluteFile,
         JVM_ABI_PLUGIN.verified().absoluteFile,
@@ -136,6 +135,7 @@ class KotlinToolchain private constructor(
         KOTLINX_SERIALIZATION_JSON.toFile(),
         KOTLINX_SERIALIZATION_JSON_JVM.toFile(),
       )
+    }
 
     @JvmStatic
     fun createToolchain(
@@ -251,13 +251,8 @@ class KotlinToolchain private constructor(
     }
   }
 
-  @Singleton
-  class KotlincInvoker
-    @Inject
-    constructor(
-      toolchain: KotlinToolchain,
-    ) : KotlinCliToolInvoker(
-        toolchain.toolchainWithReflect(),
-        "io.bazel.kotlin.compiler.BazelK2JVMCompiler",
-      )
+  class KotlincInvoker(toolchain: KotlinToolchain) : KotlinCliToolInvoker(
+    toolchain = toolchain.toolchainWithReflect(),
+    clazz = "io.bazel.kotlin.compiler.BazelK2JVMCompiler",
+  )
 }

@@ -20,15 +20,14 @@ package io.bazel.worker
 /** Worker executes a unit of Work */
 interface Worker {
   companion object {
-    fun from(
+    inline fun from(
       args: Iterable<String>,
       then: Worker.(Iterable<String>) -> Int,
     ): Int {
-      val worker =
-        when {
-          "--persistent_worker" in args -> PersistentWorker()
-          else -> InvocationWorker(args)
-        }
+      val worker = when {
+        "--persistent_worker" in args -> PersistentWorker()
+        else -> InvocationWorker(args)
+      }
       return worker.then(args.filter { it != "--persistent_worker" })
     }
   }
