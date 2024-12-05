@@ -27,7 +27,6 @@ Support for kotlin's -Xfriend-paths via the `associates=` attribute in the jvm a
 
 Also, `kt_jvm_*` rules support the following standard `java_*` rules attributes:
   * `data`
-  * `resource_jars`
   * `runtime_deps`
   * `exports`
   

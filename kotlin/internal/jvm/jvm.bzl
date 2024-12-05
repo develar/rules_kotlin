@@ -190,16 +190,6 @@ _common_attr = utils.add_dicts(
             default = [],
             allow_files = False,
         ),
-        "resources": attr.label_list(
-            doc = """A list of files that should be include in a Java jar.""",
-            default = [],
-            allow_files = True,
-        ),
-        "resource_jars": attr.label_list(
-            doc = """Set of archives containing Java resources. If specified, the contents of these jars are merged into
-        the output jar.""",
-            default = [],
-        ),
         "data": attr.label_list(
             doc = """The list of files needed by this rule at runtime. See general comments about `data` at
         [Attributes common to all build rules](https://docs.bazel.build/versions/master/be/common-definitions.html#common-attributes).""",
@@ -227,21 +217,18 @@ _common_attr = utils.add_dicts(
             doc = """The name of the module, if not provided the module name is derived from the label. --e.g.,
         `//some/package/path:label_name` is translated to
         `some_package_path-label_name`.""",
-            mandatory = False,
         ),
         "kotlinc_opts": attr.label(
             doc = """Kotlinc options to be used when compiling this target. These opts if provided
             will be used instead of the ones provided to the toolchain.""",
             default = None,
             providers = [_KotlincOptions],
-            mandatory = False,
         ),
         "javac_opts": attr.label(
             doc = """Javac options to be used when compiling this target. These opts if provided will
             be used instead of the ones provided to the toolchain.""",
             default = None,
             providers = [_JavacOptions],
-            mandatory = False,
         ),
     },
 )

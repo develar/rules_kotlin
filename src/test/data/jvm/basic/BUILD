@@ -40,19 +40,19 @@ kt_jvm_library(
 #     resources = glob(["resourcejar/**"]),
 # )
 
-kt_jvm_library(
-    name = "test_embed_resources",
-    srcs = glob(["testresources/src/*.kt"]),
-    resources = glob(["testresources/resources/**/*"]),
-    visibility = ["//visibility:public"],
-)
+# kt_jvm_library(
+#     name = "test_embed_resources",
+#     srcs = glob(["testresources/src/*.kt"]),
+#     resources = glob(["testresources/resources/**/*"]),
+#     visibility = ["//visibility:public"],
+# )
 
-kt_jvm_library(
-    name = "test_merge_resourcesjar",
-    srcs = glob(["testresources/src/*.kt"]),
-    resource_jars = [":resourcejar"],
-    visibility = ["//visibility:public"],
-)
+# kt_jvm_library(
+#     name = "test_merge_resourcesjar",
+#     srcs = glob(["testresources/src/*.kt"]),
+#     resource_jars = [":resourcejar"],
+#     visibility = ["//visibility:public"],
+# )
 #
 # kt_jvm_library(
 #     name = "test_embed_resources_strip_prefix",
@@ -61,16 +61,16 @@ kt_jvm_library(
 #     resources = glob(["testresources/resources/**/*"]),
 # )
 
-kt_jvm_library(
-    name = "conventional_strip_resources",
-    srcs = glob(["testresources/src/*.kt"]),
-    resources = glob([
-        "conventional_strip_resources/src/main/java/**/*",
-        "conventional_strip_resources/src/test/java/**/*",
-        "conventional_strip_resources/src/main/resources/**/*",
-        "conventional_strip_resources/src/test/resources/**/*",
-    ]),
-)
+# kt_jvm_library(
+#     name = "conventional_strip_resources",
+#     srcs = glob(["testresources/src/*.kt"]),
+#     resources = glob([
+#         "conventional_strip_resources/src/main/java/**/*",
+#         "conventional_strip_resources/src/test/java/**/*",
+#         "conventional_strip_resources/src/main/resources/**/*",
+#         "conventional_strip_resources/src/test/resources/**/*",
+#     ]),
+# )
 
 kt_jvm_library(
     name = "propagation_test_exporter_lib",

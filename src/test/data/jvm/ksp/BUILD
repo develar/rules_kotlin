@@ -105,40 +105,40 @@ kt_jvm_library(
     ],
 )
 
-kt_jvm_library(
-    name = "ksp_mixed_resources",
-    srcs = [
-        "CoffeeApp.kt",
-        "CoffeeBean.java",
-        "CoffeeMaker.kt",
-        "DripCoffeeModule.kt",
-    ],
-    plugins = [":dagger"],
-    deps = ["@kotlin_rules_maven//:com_google_dagger_dagger"],
-)
+# kt_jvm_library(
+#     name = "ksp_mixed_resources",
+#     srcs = [
+#         "CoffeeApp.kt",
+#         "CoffeeBean.java",
+#         "CoffeeMaker.kt",
+#         "DripCoffeeModule.kt",
+#     ],
+#     plugins = [":dagger"],
+#     deps = ["@kotlin_rules_maven//:com_google_dagger_dagger"],
+# )
 
-kt_jvm_library(
-    name = "ksp_mixed_resources_multiple_plugins",
-    srcs = [
-        "CoffeeApp.kt",
-        "CoffeeAppModel.kt",
-        "CoffeeAppService.java",
-        "CoffeeMaker.kt",
-        "DripCoffeeModule.kt",
-    ],
-    plugins = [
-        ":autoservice",
-        ":dagger",
-        ":moshi",
-    ],
-    deps = [
-        "@kotlin_rules_maven//:com_google_dagger_dagger",
-        "@kotlin_rules_maven//:com_squareup_moshi_moshi",
-        "@kotlin_rules_maven//:com_squareup_moshi_moshi_kotlin",
-        "@kotlin_rules_maven//:com_squareup_moshi_moshi_kotlin_codegen",
-        "@kotlin_rules_maven//:dev_zacsweers_autoservice_auto_service_ksp",
-    ],
-)
+# kt_jvm_library(
+#     name = "ksp_mixed_resources_multiple_plugins",
+#     srcs = [
+#         "CoffeeApp.kt",
+#         "CoffeeAppModel.kt",
+#         "CoffeeAppService.java",
+#         "CoffeeMaker.kt",
+#         "DripCoffeeModule.kt",
+#     ],
+#     plugins = [
+#         ":autoservice",
+#         ":dagger",
+#         ":moshi",
+#     ],
+#     deps = [
+#         "@kotlin_rules_maven//:com_google_dagger_dagger",
+#         "@kotlin_rules_maven//:com_squareup_moshi_moshi",
+#         "@kotlin_rules_maven//:com_squareup_moshi_moshi_kotlin",
+#         "@kotlin_rules_maven//:com_squareup_moshi_moshi_kotlin_codegen",
+#         "@kotlin_rules_maven//:dev_zacsweers_autoservice_auto_service_ksp",
+#     ],
+# )
 
 filegroup(
     name = "ksp",

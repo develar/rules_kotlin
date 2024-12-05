@@ -62,12 +62,12 @@ kt_jvm_library(
     deps = ["@kotlin_rules_maven//:com_google_auto_value_auto_value_annotations"],
 )
 
-kt_jvm_library(
-    name = "ap_kotlin_resources",
-    srcs = ["kotlin/TestKtService.kt"],
-    plugins = [":autoservice"],
-    deps = ["@kotlin_rules_maven//:com_google_auto_service_auto_service_annotations"],
-)
+# kt_jvm_library(
+#     name = "ap_kotlin_resources",
+#     srcs = ["kotlin/TestKtService.kt"],
+#     plugins = [":autoservice"],
+#     deps = ["@kotlin_rules_maven//:com_google_auto_service_auto_service_annotations"],
+# )
 
 kt_jvm_library(
     name = "ap_kotlin_resources_mixed",
