@@ -19,12 +19,12 @@ package io.bazel.worker
 
 /** InvocationWorker executes a single unit of work. */
 class InvocationWorker(
-  private val arguments: Iterable<String>,
+  private val args: List<String>,
 ) : Worker {
   override fun start(execute: Work): Int =
     runCatching {
       WorkerContext.run {
-        doTask("invocation") { ctx -> execute(ctx, arguments) }.run {
+        doTask("invocation") { ctx -> execute(ctx, args) }.run {
           print(log.out.toString())
           status.exit
         }

@@ -23,8 +23,8 @@ import io.bazel.worker.WorkerContext.TaskContext
 interface Worker {
   companion object {
     inline fun from(
-      args: Iterable<String>,
-      then: Worker.(Iterable<String>) -> Int,
+      args: List<String>,
+      then: Worker.(List<String>) -> Int,
     ): Int {
       val worker = when {
         "--persistent_worker" in args -> PersistentWorker()
@@ -41,6 +41,6 @@ interface Worker {
 fun interface Work {
   operator fun invoke(
     ctx: TaskContext,
-    args: Iterable<String>,
+    args: List<String>,
   ): Status
 }

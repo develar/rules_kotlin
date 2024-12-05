@@ -33,9 +33,9 @@ class MergeJdeps : Work {
 
   override fun invoke(
     ctx: WorkerContext.TaskContext,
-    args: Iterable<String>,
+    args: List<String>,
   ): Status {
-    val argMap = getArgs(args.toList())
+    val argMap = getArgs(args)
     val inputs = argMap.mandatory(JdepsMergerFlags.INPUTS)
     val output = argMap.mandatorySingle(JdepsMergerFlags.OUTPUT)
     val label = argMap.mandatorySingle(JdepsMergerFlags.TARGET_LABEL)
