@@ -419,7 +419,7 @@ def _run_kt_builder_action(
     for f, path in outputs.items():
         args.add("--" + f, path)
 
-    # Unwrap kotlinc_options/javac_options options or default to the ones being provided by the toolchain
+    # unwrap kotlinc_options/javac_options options or default to the ones being provided by the toolchain
     args.add_all("--kotlin_passthrough_flags", kotlinc_options_to_flags(kotlinc_options))
     args.add_all("--javacopts", javac_options_to_flags(javac_options))
     args.add_all("--direct_dependencies", _java_infos_to_compile_jars(compile_deps.deps))
@@ -432,7 +432,7 @@ def _run_kt_builder_action(
     args.add_all("--kotlin_friend_paths", associates.jars, map_each = _associate_utils.flatten_jars)
     args.add("--instrument_coverage", ctx.coverage_instrumented())
 
-    # Collect and prepare plugin descriptor for the worker.
+    # collect and prepare plugin descriptor for the worker
     args.add_all(
         "--processors",
         annotation_processors,
@@ -667,6 +667,37 @@ def _get_or_create_single_jdeps_output(toolchain, java_infos, ctx, compile_deps)
             output = output_jdeps,
         )
 
+def _compile_java_sources(ctx, srcs, generated_kapt_src_jars, generated_ksp_src_jars, compile_deps, kt_stubs_for_java, toolchains, strict_deps):
+    """Compiles Java sources if present, otherwise uses KT ABI jar."""
+    has_java_sources = srcs.java or generated_kapt_src_jars or srcs.src_jars or (generated_ksp_src_jars and is_ksp_processor_generating_java(ctx.attr.plugins))
+
+    if not has_java_sources:
+        # no sources to compile, return early
+        return None
+
+    javac_options = javac_options_to_flags(
+        ctx.attr.javac_opts[JavacOptions] if ctx.attr.javac_opts else toolchains.kt.javac_options,
+    )
+
+    if srcs.kt:
+        # assemblage consideration for Kotlin annotation processing
+        javac_options.append("-proc:none")
+
+    java_info = java_common.compile(
+        ctx,
+        source_files = srcs.java,
+        source_jars = generated_kapt_src_jars + srcs.src_jars + generated_ksp_src_jars,
+        output = ctx.actions.declare_file(ctx.label.name + "-java.jar"),
+        deps = compile_deps.deps + kt_stubs_for_java,
+        java_toolchain = toolchains.java,
+        plugins = _plugin_mappers.targets_to_annotation_processors_java_plugin_info(ctx.attr.plugins) if hasattr(ctx.attr, "plugins") else [],
+        javac_opts = javac_options,
+        neverlink = getattr(ctx.attr, "neverlink", False),
+        strict_deps = strict_deps,
+    )
+
+    return java_info
+
 def _run_kt_java_builder_actions(
         ctx,
         rule_kind,
@@ -692,7 +723,7 @@ def _run_kt_java_builder_actions(
     kt_stubs_for_java = []
     has_kt_sources = srcs.kt or srcs.src_jars
 
-    # Run KAPT
+    # run KAPT
     if has_kt_sources and annotation_processors:
         kapt_outputs = _run_kapt_builder_actions(
             ctx,
@@ -716,7 +747,7 @@ def _run_kt_java_builder_actions(
             ),
         )
 
-    # Run KSP
+    # run KSP
     if has_kt_sources and ksp_annotation_processors:
         ksp_outputs = _run_ksp_builder_actions(
             ctx,
@@ -736,10 +767,12 @@ def _run_kt_java_builder_actions(
     outputs = None
     kt_compile_jar = None
 
-    # Build Kotlin
+    toolchain = toolchains.kt
+
+    # build Kotlin
     if has_kt_sources:
         kt_runtime_jar = ctx.actions.declare_file(ctx.label.name + "-kt.jar")
-        if not "kt_abi_plugin_incompatible" in ctx.attr.tags and toolchains.kt.experimental_use_abi_jars == True:
+        if not "kt_abi_plugin_incompatible" in ctx.attr.tags and toolchain.experimental_use_abi_jars == True:
             kt_compile_jar = ctx.actions.declare_file(ctx.label.name + "-kt.abi.jar")
             outputs = {
                 "output": kt_runtime_jar,
@@ -752,7 +785,7 @@ def _run_kt_java_builder_actions(
             }
 
         kt_jdeps = None
-        if toolchains.kt.jvm_emit_jdeps:
+        if toolchain.jvm_emit_jdeps:
             kt_jdeps = ctx.actions.declare_file(ctx.label.name + "-kt.jdeps")
             outputs["kotlin_output_jdeps"] = kt_jdeps
 
@@ -789,41 +822,23 @@ def _run_kt_java_builder_actions(
         )
         java_infos.append(kt_java_info)
 
-    toolchain = toolchains.kt
+    java_part_java_info = _compile_java_sources(
+        ctx = ctx,
+        srcs = srcs,
+        generated_kapt_src_jars = generated_kapt_src_jars,
+        generated_ksp_src_jars = generated_ksp_src_jars,
+        compile_deps = compile_deps,
+        kt_stubs_for_java = kt_stubs_for_java,
+        toolchains = toolchains,
+        strict_deps = toolchain.experimental_strict_kotlin_deps,
+    )
 
-    # Build Java
-    # If there is Java source or KAPT/KSP generated Java source compile that Java and fold it into
-    # the final ABI jar. Otherwise just use the KT ABI jar as final ABI jar.
-    ksp_generated_java_src_jars = generated_ksp_src_jars and is_ksp_processor_generating_java(ctx.attr.plugins)
-    if srcs.java or generated_kapt_src_jars or srcs.src_jars or ksp_generated_java_src_jars:
-        javac_opts = javac_options_to_flags(ctx.attr.javac_opts[JavacOptions] if ctx.attr.javac_opts else toolchain.javac_options)
-
-        # Kotlin takes care of annotation processing. Note that JavaBuilder "discovers"
-        # annotation processors in `deps` also.
-        if len(srcs.kt) > 0:
-            javac_opts.append("-proc:none")
-        java_info = java_common.compile(
-            ctx,
-            source_files = srcs.java,
-            source_jars = generated_kapt_src_jars + srcs.src_jars + generated_ksp_src_jars,
-            output = ctx.actions.declare_file(ctx.label.name + "-java.jar"),
-            deps = compile_deps.deps + kt_stubs_for_java,
-            java_toolchain = toolchains.java,
-            plugins = _plugin_mappers.targets_to_annotation_processors_java_plugin_info(ctx.attr.plugins) if hasattr(ctx.attr, "plugins") else [],
-            javac_opts = javac_opts,
-            neverlink = getattr(ctx.attr, "neverlink", False),
-            strict_deps = toolchain.experimental_strict_kotlin_deps,
-        )
-        ap_generated_src_jar = java_info.annotation_processing.source_jar
-        compile_jars = compile_jars + [
-            jars.ijar
-            for jars in java_info.outputs.jars
-        ]
-        output_jars = output_jars + [
-            jars.class_jar
-            for jars in java_info.outputs.jars
-        ]
-        java_infos.append(java_info)
+    ap_generated_src_jar = None
+    if java_part_java_info:
+        java_infos.append(java_part_java_info)
+        ap_generated_src_jar = java_part_java_info.annotation_processing.source_jar
+        compile_jars = compile_jars + [jars.ijar for jars in java_part_java_info.outputs.jars]
+        output_jars = output_jars + [jars.class_jar for jars in java_part_java_info.outputs.jars ]
 
     # merge ABI jars into final compile jar
     _fold_jars_action(
