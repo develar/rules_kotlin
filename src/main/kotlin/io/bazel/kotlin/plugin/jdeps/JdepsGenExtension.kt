@@ -156,7 +156,7 @@ class JdepsGenExtension(
       // First collect type from the Resolved Call
       collectExplicitTypes(resolvedCall)
 
-      resolvedCall.valueArguments.keys.forEach { valueArgument ->
+      for (valueArgument in resolvedCall.valueArguments.keys) {
         collectTypeReferences(valueArgument.type, isExplicit = false)
       }
 
@@ -175,16 +175,15 @@ class JdepsGenExtension(
 
       // Finally, collect types that depend on the type of the ResultingDescriptor and note that
       // these descriptors may be composed of multiple classes that we need to extract types from
-      if (resultingDescriptor is DeclarationDescriptor) {
-        val containingDeclaration = resultingDescriptor.containingDeclaration
-        if (containingDeclaration is ClassDescriptor) {
-          collectTypeReferences(containingDeclaration.defaultType)
-        }
+      val containingDeclaration = resultingDescriptor.containingDeclaration
+      if (containingDeclaration is ClassDescriptor) {
+        collectTypeReferences(containingDeclaration.defaultType)
+      }
 
-        if (resultingDescriptor is PropertyDescriptor) {
-          (
-            resultingDescriptor.getter
-              ?.correspondingProperty as? SyntheticJavaPropertyDescriptor
+      if (resultingDescriptor is PropertyDescriptor) {
+        (
+          resultingDescriptor.getter
+            ?.correspondingProperty as? SyntheticJavaPropertyDescriptor
           )?.let { syntheticJavaPropertyDescriptor ->
             collectTypeReferences(syntheticJavaPropertyDescriptor.type, isExplicit = false)
 
@@ -193,7 +192,6 @@ class JdepsGenExtension(
               collectTypeReferences(dispatchReceiverType, isExplicit = false)
             }
           }
-        }
       }
 
       if (resultingDescriptor is ImportedFromObjectCallableDescriptor<*>) {

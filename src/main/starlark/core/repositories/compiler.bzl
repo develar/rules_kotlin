@@ -46,17 +46,14 @@ def _get_capability_template(compiler_version, templates):
         if compiler_version.startswith(ver):
             return template
 
-    # After latest version
+    # after latest version
     if compiler_version > _CAPABILITIES_TEMPLATES.keys()[-1]:
         templates[-1]
 
-    # Legacy
-    return templates[0]
+    # assume the latest
+    return templates[len(templates) - 1]
 
 _CAPABILITIES_TEMPLATES = {
-    "legacy": "//src/main/starlark/core/repositories/kotlin:capabilities_legacy.bzl.com_github_jetbrains_kotlin.bazel",  # keep first
-    "1.4": "//src/main/starlark/core/repositories/kotlin:capabilities_1.4.bzl.com_github_jetbrains_kotlin.bazel",
-    "1.5": "//src/main/starlark/core/repositories/kotlin:capabilities_1.5.bzl.com_github_jetbrains_kotlin.bazel",
     "1.6": "//src/main/starlark/core/repositories/kotlin:capabilities_1.6.bzl.com_github_jetbrains_kotlin.bazel",
     "1.7": "//src/main/starlark/core/repositories/kotlin:capabilities_1.7.bzl.com_github_jetbrains_kotlin.bazel",
     "1.8": "//src/main/starlark/core/repositories/kotlin:capabilities_1.8.bzl.com_github_jetbrains_kotlin.bazel",
