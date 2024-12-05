@@ -64,9 +64,9 @@ def find_java_runtime_toolchain(ctx, target):
 def _java_info(target):
     return target[JavaInfo] if JavaInfo in target else None
 
-def _deps_artifacts(toolchains, targets):
+def _deps_artifacts(toolchain, targets):
     """Collect Jdeps artifacts if required."""
-    deps_artifacts = [t[JavaInfo].outputs.jdeps for t in targets if JavaInfo in t and t[JavaInfo].outputs.jdeps] if  toolchains.kt.experimental_report_unused_deps else []
+    deps_artifacts = [t[JavaInfo].outputs.jdeps for t in targets if JavaInfo in t and t[JavaInfo].outputs.jdeps] if toolchain.experimental_report_unused_deps else []
     return depset(deps_artifacts)
 
 def _partitioned_srcs(srcs):
@@ -259,7 +259,7 @@ def _fold_jars_action(ctx, rule_kind, toolchains, output_jar, input_jars, action
         ),
     )
 
-def _run_merge_jdeps_action(ctx, toolchains, jdeps, output, deps):
+def _run_merge_jdeps_action(ctx, toolchain, jdeps, output, deps):
     """Creates a Jdeps merger action invocation."""
     args = ctx.actions.args()
     args.set_param_file_format("multiline")
@@ -270,7 +270,7 @@ def _run_merge_jdeps_action(ctx, toolchains, jdeps, output, deps):
     args.add("--output", output)
 
     args.add_all("--inputs", jdeps)
-    args.add("--report_unused_deps", toolchains.kt.experimental_report_unused_deps)
+    args.add("--report_unused_deps", toolchain.experimental_report_unused_deps)
 
     mnemonic = "JdepsMerge"
     progress_message = "%s %%{label} { jdeps: %d }" % (
@@ -279,7 +279,7 @@ def _run_merge_jdeps_action(ctx, toolchains, jdeps, output, deps):
     )
 
     inputs = depset(jdeps)
-    if not toolchains.kt.experimental_report_unused_deps == "off":
+    if not toolchain.experimental_report_unused_deps == "off":
         # for sandboxing to work, and for this action to be deterministic, the compile jars need to be passed as inputs
         inputs = depset(jdeps, transitive = [depset([], transitive = [dep.transitive_compile_time_jars for dep in deps])])
 
@@ -287,10 +287,10 @@ def _run_merge_jdeps_action(ctx, toolchains, jdeps, output, deps):
         mnemonic = mnemonic,
         inputs = inputs,
         outputs = [output],
-        executable = ctx.attr.jdeps_merger.files_to_run.executable,
-        execution_requirements = toolchains.kt.execution_requirements,
+        executable = toolchain.jdeps_merger.files_to_run.executable,
+        execution_requirements = toolchain.execution_requirements,
         arguments = [
-            ctx.actions.args().add_all(toolchains.kt.builder_args),
+            ctx.actions.args().add_all(toolchain.builder_args),
             args,
         ],
         progress_message = progress_message,
@@ -529,7 +529,8 @@ def kt_jvm_produce_jar_actions(ctx, rule_kind):
     transitive_runtime_jars = _plugin_mappers.targets_to_transitive_runtime_jars(ctx.attr.plugins + ctx.attr.deps)
     plugins = _new_plugins_from(ctx.attr.plugins + _exported_plugins(deps = ctx.attr.deps))
 
-    deps_artifacts = _deps_artifacts(toolchains, ctx.attr.deps + associates.targets)
+    toolchain = toolchains.kt
+    deps_artifacts = _deps_artifacts(toolchain, ctx.attr.deps + associates.targets)
 
     generated_src_jars = []
     annotation_processing = None
@@ -560,7 +561,7 @@ def kt_jvm_produce_jar_actions(ctx, rule_kind):
     if len(output_jars) == 1:
          ctx.actions.symlink(output = output_jar, target_file = output_jars[0])
     elif len(output_jars) == 0:
-         ctx.actions.symlink(output = output_jar, target_file = toolchains.kt.empty_jar)
+         ctx.actions.symlink(output = output_jar, target_file = toolchain.empty_jar)
     else:
         _fold_jars_action(
             ctx,
@@ -612,7 +613,7 @@ def kt_jvm_produce_jar_actions(ctx, rule_kind):
             srcs = ctx.files.srcs,
             module_name = associates.module_name,
             module_jars = associates.jars,
-            language_version = toolchains.kt.api_version,
+            language_version = toolchain.api_version,
             exported_compiler_plugins = _collect_plugins_for_export(
                 getattr(ctx.attr, "exported_compiler_plugins", []),
                 getattr(ctx.attr, "exports", []),
@@ -756,12 +757,14 @@ def _run_kt_java_builder_actions(
         )
         java_infos.append(kt_java_info)
 
+    toolchain = toolchains.kt
+
     # Build Java
     # If there is Java source or KAPT/KSP generated Java source compile that Java and fold it into
     # the final ABI jar. Otherwise just use the KT ABI jar as final ABI jar.
     ksp_generated_java_src_jars = generated_ksp_src_jars and is_ksp_processor_generating_java(ctx.attr.plugins)
     if srcs.java or generated_kapt_src_jars or srcs.src_jars or ksp_generated_java_src_jars:
-        javac_opts = javac_options_to_flags(ctx.attr.javac_opts[JavacOptions] if ctx.attr.javac_opts else toolchains.kt.javac_options)
+        javac_opts = javac_options_to_flags(ctx.attr.javac_opts[JavacOptions] if ctx.attr.javac_opts else toolchain.javac_options)
 
         # Kotlin takes care of annotation processing. Note that JavaBuilder "discovers"
         # annotation processors in `deps` also.
@@ -777,7 +780,7 @@ def _run_kt_java_builder_actions(
             plugins = _plugin_mappers.targets_to_annotation_processors_java_plugin_info(ctx.attr.plugins),
             javac_opts = javac_opts,
             neverlink = getattr(ctx.attr, "neverlink", False),
-            strict_deps = toolchains.kt.experimental_strict_kotlin_deps,
+            strict_deps = toolchain.experimental_strict_kotlin_deps,
         )
         ap_generated_src_jar = java_info.annotation_processing.source_jar
         compile_jars = compile_jars + [
@@ -801,7 +804,7 @@ def _run_kt_java_builder_actions(
     )
 
     output_jdeps = None
-    if toolchains.kt.jvm_emit_jdeps:
+    if toolchain.jvm_emit_jdeps:
         jdeps = [java_info.outputs.jdeps for java_info in java_infos if java_info.outputs.jdeps]
 
         if len(jdeps) == 1:
@@ -810,7 +813,7 @@ def _run_kt_java_builder_actions(
             output_jdeps = ctx.actions.declare_file(ctx.label.name + ".jdeps")
             _run_merge_jdeps_action(
                 ctx = ctx,
-                toolchains = toolchains,
+                toolchain = toolchain,
                 jdeps = jdeps,
                 deps = compile_deps.deps,
                 output = output_jdeps,
