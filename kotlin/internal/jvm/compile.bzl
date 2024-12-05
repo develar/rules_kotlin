@@ -261,16 +261,6 @@ def _fold_jars_action(ctx, rule_kind, toolchains, output_jar, input_jars, action
 
 def _run_merge_jdeps_action(ctx, toolchain, jdeps, output, deps):
     """Creates a Jdeps merger action invocation."""
-    args = ctx.actions.args()
-    args.set_param_file_format("multiline")
-    args.use_param_file("--flagfile=%s", use_always = True)
-
-    args.add("--target_label", ctx.label)
-
-    args.add("--output", output)
-
-    args.add_all("--inputs", jdeps)
-    args.add("--report_unused_deps", toolchain.experimental_report_unused_deps)
 
     mnemonic = "JdepsMerge"
     progress_message = "%s %%{label} { jdeps: %d }" % (
@@ -283,18 +273,42 @@ def _run_merge_jdeps_action(ctx, toolchain, jdeps, output, deps):
         # for sandboxing to work, and for this action to be deterministic, the compile jars need to be passed as inputs
         inputs = depset(jdeps, transitive = [depset([], transitive = [dep.transitive_compile_time_jars for dep in deps])])
 
-    ctx.actions.run(
-        mnemonic = mnemonic,
-        inputs = inputs,
-        outputs = [output],
-        executable = toolchain.jdeps_merger.files_to_run.executable,
-        execution_requirements = toolchain.execution_requirements,
-        arguments = [
-            ctx.actions.args().add_all(toolchain.builder_args),
-            args,
-        ],
-        progress_message = progress_message,
-    )
+    if hasattr(ctx.attr, "_jdeps_merger"):
+         jdeps_merger = ctx.attr._jdeps_merger if hasattr(ctx.attr, "_jdeps_merger") else toolchain.jdeps_merger
+         ctx.actions.run(
+             mnemonic = mnemonic,
+             inputs = inputs,
+             outputs = [output],
+             executable = jdeps_merger.files_to_run.executable,
+             execution_requirements = toolchain.execution_requirements,
+             arguments = ["--flagfile=|jdeps|" + output.path + "|" + str(ctx.label) + "|" + toolchain.experimental_report_unused_deps],
+             progress_message = progress_message,
+         )
+    else:
+         args = ctx.actions.args()
+         args.set_param_file_format("multiline")
+         args.use_param_file("--flagfile=%s", use_always = True)
+
+         args.add("--target_label", ctx.label)
+
+         args.add("--output", output)
+
+         args.add_all("--inputs", jdeps)
+         args.add("--report_unused_deps", toolchain.experimental_report_unused_deps)
+
+         jdeps_merger = ctx.attr._jdeps_merger if hasattr(ctx.attr, "_jdeps_merger") else toolchain.jdeps_merger
+         ctx.actions.run(
+             mnemonic = mnemonic,
+             inputs = inputs,
+             outputs = [output],
+             executable = jdeps_merger.files_to_run.executable,
+             execution_requirements = toolchain.execution_requirements,
+             arguments = [
+                 ctx.actions.args().add_all(toolchain.builder_args),
+                 args,
+             ],
+             progress_message = progress_message,
+         )
 
 def _run_kapt_builder_actions(
         ctx,
