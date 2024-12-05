@@ -274,41 +274,41 @@ def _run_merge_jdeps_action(ctx, toolchain, jdeps, output, deps):
         inputs = depset(jdeps, transitive = [depset([], transitive = [dep.transitive_compile_time_jars for dep in deps])])
 
     if hasattr(ctx.attr, "_jdeps_merger"):
-         jdeps_merger = ctx.attr._jdeps_merger if hasattr(ctx.attr, "_jdeps_merger") else toolchain.jdeps_merger
-         ctx.actions.run(
-             mnemonic = mnemonic,
-             inputs = inputs,
-             outputs = [output],
-             executable = jdeps_merger.files_to_run.executable,
-             execution_requirements = toolchain.execution_requirements,
-             arguments = ["--flagfile=|jdeps|" + output.path + "|" + str(ctx.label) + "|" + toolchain.experimental_report_unused_deps],
-             progress_message = progress_message,
-         )
+        jdeps_merger = ctx.attr._jdeps_merger if hasattr(ctx.attr, "_jdeps_merger") else toolchain.jdeps_merger
+        ctx.actions.run(
+            mnemonic = mnemonic,
+            inputs = inputs,
+            outputs = [output],
+            executable = jdeps_merger.files_to_run.executable,
+            execution_requirements = toolchain.execution_requirements,
+            arguments = ["--flagfile=|jdeps|" + output.path + "|" + str(ctx.label) + "|" + toolchain.experimental_report_unused_deps],
+            progress_message = progress_message,
+        )
     else:
-         args = ctx.actions.args()
-         args.set_param_file_format("multiline")
-         args.use_param_file("--flagfile=%s", use_always = True)
+        args = ctx.actions.args()
+        args.set_param_file_format("multiline")
+        args.use_param_file("--flagfile=%s", use_always = True)
 
-         args.add("--target_label", ctx.label)
+        args.add("--target_label", ctx.label)
 
-         args.add("--output", output)
+        args.add("--output", output)
 
-         args.add_all("--inputs", jdeps)
-         args.add("--report_unused_deps", toolchain.experimental_report_unused_deps)
+        args.add_all("--inputs", jdeps)
+        args.add("--report_unused_deps", toolchain.experimental_report_unused_deps)
 
-         jdeps_merger = ctx.attr._jdeps_merger if hasattr(ctx.attr, "_jdeps_merger") else toolchain.jdeps_merger
-         ctx.actions.run(
-             mnemonic = mnemonic,
-             inputs = inputs,
-             outputs = [output],
-             executable = jdeps_merger.files_to_run.executable,
-             execution_requirements = toolchain.execution_requirements,
-             arguments = [
-                 ctx.actions.args().add_all(toolchain.builder_args),
-                 args,
-             ],
-             progress_message = progress_message,
-         )
+        jdeps_merger = ctx.attr._jdeps_merger if hasattr(ctx.attr, "_jdeps_merger") else toolchain.jdeps_merger
+        ctx.actions.run(
+            mnemonic = mnemonic,
+            inputs = inputs,
+            outputs = [output],
+            executable = jdeps_merger.files_to_run.executable,
+            execution_requirements = toolchain.execution_requirements,
+            arguments = [
+                ctx.actions.args().add_all(toolchain.builder_args),
+                args,
+            ],
+            progress_message = progress_message,
+        )
 
 def _run_kapt_builder_actions(
         ctx,
@@ -574,9 +574,9 @@ def kt_jvm_produce_jar_actions(ctx, rule_kind):
     # merge outputs into final runtime jar
     output_jar = ctx.actions.declare_file(ctx.label.name + ".jar")
     if len(output_jars) == 1:
-         ctx.actions.symlink(output = output_jar, target_file = output_jars[0])
+        ctx.actions.symlink(output = output_jar, target_file = output_jars[0])
     elif len(output_jars) == 0:
-         ctx.actions.symlink(output = output_jar, target_file = toolchain.empty_jar)
+        ctx.actions.symlink(output = output_jar, target_file = toolchain.empty_jar)
     else:
         _fold_jars_action(
             ctx,
@@ -649,6 +649,23 @@ def kt_jvm_produce_jar_actions(ctx, rule_kind):
             all_output_jars = output_jars,
         ),
     )
+
+def _get_or_create_single_jdeps_output(toolchain, java_infos, ctx, compile_deps):
+    if toolchain.jvm_emit_jdeps:
+        return None
+
+    jdeps = [java_info.outputs.jdeps for java_info in java_infos if java_info.outputs.jdeps]
+    if len(jdeps) == 1:
+        return jdeps[0]
+    elif jdeps:
+        output_jdeps = ctx.actions.declare_file(ctx.label.name + ".jdeps")
+        _run_merge_jdeps_action(
+            ctx = ctx,
+            toolchain = toolchain,
+            jdeps = jdeps,
+            deps = compile_deps.deps,
+            output = output_jdeps,
+        )
 
 def _run_kt_java_builder_actions(
         ctx,
@@ -818,22 +835,6 @@ def _run_kt_java_builder_actions(
         input_jars = compile_jars,
     )
 
-    output_jdeps = None
-    if toolchain.jvm_emit_jdeps:
-        jdeps = [java_info.outputs.jdeps for java_info in java_infos if java_info.outputs.jdeps]
-
-        if len(jdeps) == 1:
-            output_jdeps = jdeps[0]
-        elif jdeps:
-            output_jdeps = ctx.actions.declare_file(ctx.label.name + ".jdeps")
-            _run_merge_jdeps_action(
-                ctx = ctx,
-                toolchain = toolchain,
-                jdeps = jdeps,
-                deps = compile_deps.deps,
-                output = output_jdeps,
-            )
-
     annotation_processing = None
     if annotation_processors:
         outputs_list = [java_info.outputs for java_info in java_infos]
@@ -847,7 +848,7 @@ def _run_kt_java_builder_actions(
         output_jars = output_jars,
         generated_src_jars = generated_kapt_src_jars + generated_ksp_src_jars,
         annotation_processing = annotation_processing,
-        output_jdeps = output_jdeps,
+        output_jdeps = _get_or_create_single_jdeps_output(toolchain, java_infos, ctx, compile_deps),
     )
 
 def _create_annotation_processing(annotation_processors, ap_class_jar, ap_source_jar):
