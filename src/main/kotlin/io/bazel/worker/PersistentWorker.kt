@@ -35,8 +35,7 @@ class PersistentWorker : Worker {
     return WorkerContext.run {
       val realStdErr = System.err
       try {
-        val workerHandler =
-          WorkRequestHandlerBuilder(
+        val workerHandler = WorkRequestHandlerBuilder(
             WorkRequestCallback { request: WorkRequest, pw: PrintWriter ->
               return@WorkRequestCallback doTask(
                 name = "request ${request.requestId}",
@@ -48,7 +47,7 @@ class PersistentWorker : Worker {
           ).build()
         workerHandler.processRequests()
       } catch (e: IOException) {
-        this.error(e, { "Unknown IO exception" })
+        this.error(e) { "Unknown IO exception" }
         e.printStackTrace(realStdErr)
         return@run 1
       }
@@ -56,11 +55,12 @@ class PersistentWorker : Worker {
     }
   }
 
-  private fun WorkRequest.workTo(execute: Work): (sub: WorkerContext.TaskContext) -> Status =
-    { ctx -> execute(ctx, argumentsList.toList()) }
+  private fun WorkRequest.workTo(execute: Work): (sub: WorkerContext.TaskContext) -> Int {
+    return { ctx -> execute(ctx, argumentsList) }
+  }
 
   private fun TaskResult.asResponse(pw: PrintWriter): Int {
     pw.print(log.out.toString())
-    return status.exit
+    return status
   }
 }

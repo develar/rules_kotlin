@@ -20,7 +20,6 @@ package io.bazel.worker
 import io.bazel.worker.ContextLog.Granularity
 import io.bazel.worker.ContextLog.Granularity.INFO
 import io.bazel.worker.ContextLog.ScopeLogging
-import io.bazel.worker.Status.ERROR
 import java.io.ByteArrayOutputStream
 import java.io.Closeable
 import java.io.InterruptedIOException
@@ -43,12 +42,12 @@ class WorkerContext private constructor(
       verbose: Granularity = INFO,
       report: (ContextLog) -> Unit = {},
       work: WorkerContext.() -> T,
-    ): T =
-      WorkerContext(verbose = verbose, name = named).run {
-        use(work).also {
-          report(contents())
-        }
+    ): T {
+      val workerContext = WorkerContext(verbose = verbose, name = named)
+      return workerContext.use(work).also {
+        report(workerContext.contents())
       }
+    }
   }
 
   private class ContextLogger(
@@ -110,13 +109,8 @@ class WorkerContext private constructor(
     val directory: Path,
     logging: ScopeLogging,
   ) : ScopeLogging by logging {
-    fun <T> subTask(
-      name: String = javaClass.canonicalName,
-      task: (sub: TaskContext) -> T,
-    ): T = task(TaskContext(directory, logging = narrowTo(name)))
-
     /** resultOf a status supplier that includes information collected in the Context. */
-    fun resultOf(executeTaskIn: (TaskContext) -> Status): TaskResult {
+    fun resultOf(executeTaskIn: (TaskContext) -> Int): TaskResult {
       try {
         return TaskResult(
           executeTaskIn(this),
@@ -128,7 +122,7 @@ class WorkerContext private constructor(
           else -> error(t) { "ERROR: unexpected exception" }
         }
         return TaskResult(
-          ERROR,
+          1,
           contents(),
         )
       }
@@ -143,7 +137,7 @@ class WorkerContext private constructor(
   /** doTask work in a TaskContext. */
   fun doTask(
     name: String,
-    task: (sub: TaskContext) -> Status,
+    task: (sub: TaskContext) -> Int,
   ): TaskResult {
     info { "start task $name" }
     return WorkingDirectoryContext

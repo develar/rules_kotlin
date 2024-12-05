@@ -21,15 +21,17 @@ package io.bazel.worker
 class InvocationWorker(
   private val args: List<String>,
 ) : Worker {
-  override fun start(execute: Work): Int =
-    runCatching {
+  override fun start(execute: Work): Int {
+    return runCatching {
       WorkerContext.run {
-        doTask("invocation") { ctx -> execute(ctx, args) }.run {
+        val result = doTask("invocation") { ctx -> execute(ctx, args) }
+        result.run {
           print(log.out.toString())
-          status.exit
+          status
         }
       }
     }.recover {
       1
     }.getOrThrow()
+  }
 }

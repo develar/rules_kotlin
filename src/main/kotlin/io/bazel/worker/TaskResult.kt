@@ -18,6 +18,6 @@
 package io.bazel.worker
 
 data class TaskResult(
-  val status: Status,
+  val status: Int,
   val log: ContextLog,
 )

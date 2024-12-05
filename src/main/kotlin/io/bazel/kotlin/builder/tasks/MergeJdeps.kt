@@ -21,7 +21,6 @@ import io.bazel.kotlin.builder.tasks.jvm.JdepsMerger
 import io.bazel.kotlin.builder.tasks.jvm.JdepsMergerFlags
 import io.bazel.kotlin.builder.utils.ArgMap
 import io.bazel.kotlin.builder.utils.ArgMaps
-import io.bazel.worker.Status
 import io.bazel.worker.Work
 import io.bazel.worker.WorkerContext
 import java.nio.charset.StandardCharsets
@@ -34,20 +33,19 @@ class MergeJdeps : Work {
   override fun invoke(
     ctx: WorkerContext.TaskContext,
     args: List<String>,
-  ): Status {
+  ): Int {
     val argMap = getArgs(args)
     val inputs = argMap.mandatory(JdepsMergerFlags.INPUTS)
     val output = argMap.mandatorySingle(JdepsMergerFlags.OUTPUT)
     val label = argMap.mandatorySingle(JdepsMergerFlags.TARGET_LABEL)
     val reportUnusedDeps = argMap.mandatorySingle(JdepsMergerFlags.REPORT_UNUSED_DEPS)
-    val result = JdepsMerger.merge(
+    return JdepsMerger.merge(
       ctx = ctx,
       label = label,
       inputs = inputs,
       output = output,
       reportUnusedDeps = reportUnusedDeps,
     )
-    return if (result == 0) Status.SUCCESS else Status.ERROR
   }
 
   private fun getArgs(args: List<String>): ArgMap {

@@ -23,12 +23,12 @@ import org.junit.Test
 class InvocationWorkerTest {
   @Test
   fun start() {
-    val arguments = listOf("--mammal", "bunny")
+    val args = listOf("--mammal", "bunny")
     assertThat(
-      InvocationWorker(arguments).start { _, actualArgs ->
+      InvocationWorker(args).start { _, actualArgs ->
         when (actualArgs) {
-          arguments -> Status.SUCCESS
-          else -> error("want $arguments, got $actualArgs")
+          args -> 0
+          else -> error("want $args, got $actualArgs")
         }
       }
     ).isEqualTo(0)

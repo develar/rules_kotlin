@@ -42,5 +42,5 @@ fun interface Work {
   operator fun invoke(
     ctx: TaskContext,
     args: List<String>,
-  ): Status
+  ): Int
 }

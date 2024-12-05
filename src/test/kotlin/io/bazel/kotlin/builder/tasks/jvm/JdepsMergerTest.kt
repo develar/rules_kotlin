@@ -235,7 +235,7 @@ class JdepsMergerTest {
         )
       }
     }
-    assertThat(result.status).isEqualTo(Status.ERROR)
+    assertThat(result.status).isEqualTo(1)
     assertThat(result.log.out.toString()).contains("'remove deps kotlin_dep' //foo/bar:baz")
 
     val depsProto = depsProto(mergedJdeps)

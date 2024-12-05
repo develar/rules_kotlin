@@ -45,7 +45,7 @@ object Build {
 
     val status = Worker.from(args.asList()) {
       start { ctx, args ->
-        if (builder.build(ctx, args) == 0) Status.SUCCESS else Status.ERROR
+        builder.build(ctx, args)
       }
     }
     exitProcess(status)
