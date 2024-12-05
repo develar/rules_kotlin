@@ -16,7 +16,6 @@ load("@rules_java//java:defs.bzl", "java_library")
 package(default_visibility = ["//src:__subpackages__"])
 
 _COMMON_DEPS = [
-    "//src/main/kotlin/io/bazel/kotlin/builder",
     "//src/main/kotlin/io/bazel/kotlin/builder/toolchain",
     "//src/main/kotlin/io/bazel/kotlin/builder/utils:utils",
     "//src/main/protobuf:kotlin_model_java_proto",
