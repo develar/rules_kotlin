@@ -38,10 +38,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Suppress("MemberVisibilityCanBePrivate")
-class KotlinBuilder
-   constructor(
-    private val jvmTaskExecutor: KotlinJvmTaskExecutor,
-  ) {
+class KotlinBuilder(private val jvmTaskExecutor: KotlinJvmTaskExecutor) {
     companion object {
       @JvmStatic
       private val FLAGFILE_RE = Pattern.compile("""^--flagfile=((.*)-(\d+).params)$""").toRegex()

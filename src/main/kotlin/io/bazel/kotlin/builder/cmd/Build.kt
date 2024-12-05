@@ -22,39 +22,31 @@ import io.bazel.kotlin.builder.tasks.jvm.InternalCompilerPlugins
 import io.bazel.kotlin.builder.tasks.jvm.KotlinJvmTaskExecutor
 import io.bazel.kotlin.builder.toolchain.KotlinToolchain
 import io.bazel.worker.Status
-import io.bazel.worker.Work
 import io.bazel.worker.Worker
-import io.bazel.worker.WorkerContext
 import kotlin.system.exitProcess
 
 object Build {
   @JvmStatic
   fun main(args: Array<String>) {
-    val status = Worker.from(args.toList()) {
-      val toolchain = KotlinToolchain.createToolchain()
-      val builder = KotlinBuilder(
-        jvmTaskExecutor = KotlinJvmTaskExecutor(
-          compiler = KotlinToolchain.KotlincInvoker(toolchain),
-          plugins = InternalCompilerPlugins(
-            jvmAbiGen = toolchain.jvmAbiGen,
-            skipCodeGen = toolchain.skipCodeGen,
-            kapt = toolchain.kapt3Plugin,
-            jdeps = toolchain.jdepsGen,
-            kspSymbolProcessingApi = toolchain.kspSymbolProcessingApi,
-            kspSymbolProcessingCommandLine = toolchain.kspSymbolProcessingCommandLine,
-          ),
+    val toolchain = KotlinToolchain.createToolchain()
+    val builder = KotlinBuilder(
+      jvmTaskExecutor = KotlinJvmTaskExecutor(
+        compiler = KotlinToolchain.KotlincInvoker(toolchain),
+        plugins = InternalCompilerPlugins(
+          jvmAbiGen = toolchain.jvmAbiGen,
+          skipCodeGen = toolchain.skipCodeGen,
+          kapt = toolchain.kapt3Plugin,
+          jdeps = toolchain.jdepsGen,
+          kspSymbolProcessingApi = toolchain.kspSymbolProcessingApi,
+          kspSymbolProcessingCommandLine = toolchain.kspSymbolProcessingCommandLine,
         ),
-      )
-      start(
-        object : Work {
-          override fun invoke(
-            ctx: WorkerContext.TaskContext,
-            args: Iterable<String>,
-          ): Status {
-            return if (builder.build(ctx, args.toList()) == 0) Status.SUCCESS else Status.ERROR
-          }
-        },
-      )
+      ),
+    )
+
+    val status = Worker.from(args.asList()) {
+      start { ctx, args ->
+        if (builder.build(ctx, args.toList()) == 0) Status.SUCCESS else Status.ERROR
+      }
     }
     exitProcess(status)
   }

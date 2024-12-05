@@ -17,6 +17,8 @@
 
 package io.bazel.worker
 
+import io.bazel.worker.WorkerContext.TaskContext
+
 /** Worker executes a unit of Work */
 interface Worker {
   companion object {
@@ -33,4 +35,12 @@ interface Worker {
   }
 
   fun start(execute: Work): Int
+}
+
+/** Task for Worker execution. */
+fun interface Work {
+  operator fun invoke(
+    ctx: TaskContext,
+    args: Iterable<String>,
+  ): Status
 }
