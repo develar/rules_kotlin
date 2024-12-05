@@ -21,7 +21,6 @@ import io.bazel.kotlin.builder.tasks.KotlinBuilder
 import io.bazel.kotlin.builder.tasks.jvm.InternalCompilerPlugins
 import io.bazel.kotlin.builder.tasks.jvm.KotlinJvmTaskExecutor
 import io.bazel.kotlin.builder.toolchain.KotlinToolchain
-import io.bazel.worker.Status
 import io.bazel.worker.Worker
 import kotlin.system.exitProcess
 
