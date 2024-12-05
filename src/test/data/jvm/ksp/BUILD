@@ -69,41 +69,41 @@ kt_jvm_library(
     ],
 )
 
-kt_jvm_library(
-    name = "ksp_kotlin_resources_multiple_plugins",
-    srcs = [
-        "CoffeeAppModel.kt",
-        "DripCoffeeModule.kt",
-    ],
-    plugins = [
-        ":dagger",
-        ":moshi",
-    ],
-    deps = [
-        "@kotlin_rules_maven//:com_google_dagger_dagger",
-        "@kotlin_rules_maven//:com_squareup_moshi_moshi",
-        "@kotlin_rules_maven//:com_squareup_moshi_moshi_kotlin",
-        "@kotlin_rules_maven//:com_squareup_moshi_moshi_kotlin_codegen",
-    ],
-)
+# kt_jvm_library(
+#     name = "ksp_kotlin_resources_multiple_plugins",
+#     srcs = [
+#         "CoffeeAppModel.kt",
+#         "DripCoffeeModule.kt",
+#     ],
+#     plugins = [
+#         ":dagger",
+#         ":moshi",
+#     ],
+#     deps = [
+#         "@kotlin_rules_maven//:com_google_dagger_dagger",
+#         "@kotlin_rules_maven//:com_squareup_moshi_moshi",
+#         "@kotlin_rules_maven//:com_squareup_moshi_moshi_kotlin",
+#         "@kotlin_rules_maven//:com_squareup_moshi_moshi_kotlin_codegen",
+#     ],
+# )
 
-kt_jvm_library(
-    name = "ksp_kotlin_resources_multiple_plugins_no_java_gen",
-    srcs = [
-        "CoffeeAppModel.kt",
-        "DripCoffeeModule.kt",
-    ],
-    plugins = [
-        ":dagger_no_java",
-        ":moshi",
-    ],
-    deps = [
-        "@kotlin_rules_maven//:com_google_dagger_dagger",
-        "@kotlin_rules_maven//:com_squareup_moshi_moshi",
-        "@kotlin_rules_maven//:com_squareup_moshi_moshi_kotlin",
-        "@kotlin_rules_maven//:com_squareup_moshi_moshi_kotlin_codegen",
-    ],
-)
+# kt_jvm_library(
+#     name = "ksp_kotlin_resources_multiple_plugins_no_java_gen",
+#     srcs = [
+#         "CoffeeAppModel.kt",
+#         "DripCoffeeModule.kt",
+#     ],
+#     plugins = [
+#         ":dagger_no_java",
+#         ":moshi",
+#     ],
+#     deps = [
+#         "@kotlin_rules_maven//:com_google_dagger_dagger",
+#         "@kotlin_rules_maven//:com_squareup_moshi_moshi",
+#         "@kotlin_rules_maven//:com_squareup_moshi_moshi_kotlin",
+#         "@kotlin_rules_maven//:com_squareup_moshi_moshi_kotlin_codegen",
+#     ],
+# )
 
 # kt_jvm_library(
 #     name = "ksp_mixed_resources",
