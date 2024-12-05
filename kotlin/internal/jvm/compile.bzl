@@ -524,10 +524,11 @@ def kt_jvm_produce_jar_actions(ctx, rule_kind):
         runtime_deps = ctx.attr.runtime_deps,
     )
 
-    annotation_processors = _plugin_mappers.targets_to_annotation_processors(ctx.attr.plugins + ctx.attr.deps)
-    ksp_annotation_processors = _plugin_mappers.targets_to_ksp_annotation_processors(ctx.attr.plugins + ctx.attr.deps)
-    transitive_runtime_jars = _plugin_mappers.targets_to_transitive_runtime_jars(ctx.attr.plugins + ctx.attr.deps)
-    plugins = _new_plugins_from(ctx.attr.plugins + _exported_plugins(deps = ctx.attr.deps))
+    perTargetPlugins = ctx.attr.plugins if hasattr(ctx.attr, "plugins") else []
+    annotation_processors = _plugin_mappers.targets_to_annotation_processors(perTargetPlugins + ctx.attr.deps)
+    ksp_annotation_processors = _plugin_mappers.targets_to_ksp_annotation_processors(perTargetPlugins + ctx.attr.deps)
+    transitive_runtime_jars = _plugin_mappers.targets_to_transitive_runtime_jars(perTargetPlugins + ctx.attr.deps)
+    plugins = _new_plugins_from(perTargetPlugins + _exported_plugins(deps = ctx.attr.deps))
 
     toolchain = toolchains.kt
     deps_artifacts = _deps_artifacts(toolchain, ctx.attr.deps + associates.targets)
@@ -777,7 +778,7 @@ def _run_kt_java_builder_actions(
             output = ctx.actions.declare_file(ctx.label.name + "-java.jar"),
             deps = compile_deps.deps + kt_stubs_for_java,
             java_toolchain = toolchains.java,
-            plugins = _plugin_mappers.targets_to_annotation_processors_java_plugin_info(ctx.attr.plugins),
+            plugins = _plugin_mappers.targets_to_annotation_processors_java_plugin_info(ctx.attr.plugins) if hasattr(ctx.attr, "plugins") else [],
             javac_opts = javac_opts,
             neverlink = getattr(ctx.attr, "neverlink", False),
             strict_deps = toolchain.experimental_strict_kotlin_deps,
