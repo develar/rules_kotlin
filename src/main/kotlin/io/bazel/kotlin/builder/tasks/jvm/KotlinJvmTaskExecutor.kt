@@ -18,11 +18,11 @@ package io.bazel.kotlin.builder.tasks.jvm
 
 import io.bazel.kotlin.builder.toolchain.CompilationStatusException
 import io.bazel.kotlin.builder.toolchain.CompilationTaskContext
-import io.bazel.kotlin.builder.toolchain.KotlinToolchain
+import io.bazel.kotlin.builder.toolchain.KotlincInvoker
 import io.bazel.kotlin.model.JvmCompilationTask
 
 class KotlinJvmTaskExecutor(
-    private val compiler: KotlinToolchain.KotlincInvoker,
+    private val compiler: KotlincInvoker,
     private val plugins: InternalCompilerPlugins,
   ) {
     private fun combine(

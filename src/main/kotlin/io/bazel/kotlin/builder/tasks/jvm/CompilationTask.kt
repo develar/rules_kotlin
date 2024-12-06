@@ -21,7 +21,7 @@ package io.bazel.kotlin.builder.tasks.jvm
 import com.google.devtools.build.lib.view.proto.Deps
 import com.google.devtools.build.lib.view.proto.Deps.Dependencies
 import io.bazel.kotlin.builder.toolchain.CompilationTaskContext
-import io.bazel.kotlin.builder.toolchain.KotlinToolchain
+import io.bazel.kotlin.builder.toolchain.KotlincInvoker
 import io.bazel.kotlin.builder.utils.IS_JVM_SOURCE_FILE
 import io.bazel.kotlin.builder.utils.bazelRuleKind
 import io.bazel.kotlin.builder.utils.jars.JarCreator
@@ -235,7 +235,7 @@ internal fun JvmCompilationTask.kspArgs(plugins: InternalCompilerPlugins): Compi
 internal fun JvmCompilationTask.runPlugins(
   context: CompilationTaskContext,
   plugins: InternalCompilerPlugins,
-  compiler: KotlinToolchain.KotlincInvoker,
+  compiler: KotlincInvoker,
 ): JvmCompilationTask {
   if (
     (
@@ -259,7 +259,7 @@ internal fun JvmCompilationTask.runPlugins(
 private fun JvmCompilationTask.runKaptPlugin(
   context: CompilationTaskContext,
   plugins: InternalCompilerPlugins,
-  compiler: KotlinToolchain.KotlincInvoker,
+  compiler: KotlincInvoker,
 ): JvmCompilationTask {
   return context.execute("kapt (${inputs.processorsList.joinToString(", ")})") {
     baseArgs()
@@ -295,7 +295,7 @@ private fun JvmCompilationTask.runKaptPlugin(
 private fun JvmCompilationTask.runKspPlugin(
   context: CompilationTaskContext,
   plugins: InternalCompilerPlugins,
-  compiler: KotlinToolchain.KotlincInvoker,
+  compiler: KotlincInvoker,
 ): JvmCompilationTask {
   return context.execute("Ksp (${inputs.processorsList.joinToString(", ")})") {
     val overrides =
@@ -420,7 +420,7 @@ internal fun JvmCompilationTask.createGeneratedKspKotlinSrcJar() {
 fun compileKotlin(
   compilationTask: JvmCompilationTask,
   context: CompilationTaskContext,
-  compiler: KotlinToolchain.KotlincInvoker,
+  compiler: KotlincInvoker,
   args: CompilationArgs = compilationTask.baseArgs(),
   printOnFail: Boolean = true,
 ): List<String> {

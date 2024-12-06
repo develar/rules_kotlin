@@ -21,6 +21,7 @@ import io.bazel.kotlin.builder.tasks.KotlinBuilder
 import io.bazel.kotlin.builder.tasks.jvm.InternalCompilerPlugins
 import io.bazel.kotlin.builder.tasks.jvm.KotlinJvmTaskExecutor
 import io.bazel.kotlin.builder.toolchain.KotlinToolchain
+import io.bazel.kotlin.builder.toolchain.KotlincInvoker
 import io.bazel.worker.Worker
 import kotlin.system.exitProcess
 
@@ -30,7 +31,7 @@ object Build {
     val toolchain = KotlinToolchain.createToolchain()
     val builder = KotlinBuilder(
       jvmTaskExecutor = KotlinJvmTaskExecutor(
-        compiler = KotlinToolchain.KotlincInvoker(toolchain),
+        compiler = KotlincInvoker(toolchain),
         plugins = InternalCompilerPlugins(
           jvmAbiGen = toolchain.jvmAbiGen,
           skipCodeGen = toolchain.skipCodeGen,

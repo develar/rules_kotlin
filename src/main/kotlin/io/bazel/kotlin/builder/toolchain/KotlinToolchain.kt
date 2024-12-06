@@ -16,14 +16,13 @@
  */
 package io.bazel.kotlin.builder.toolchain
 
+import io.bazel.kotlin.builder.toolchain.KotlinToolchain.Companion.NO_ARGS
 import io.bazel.kotlin.builder.utils.BazelRunFiles
 import io.bazel.kotlin.builder.utils.verified
 import java.io.File
 import java.io.PrintStream
 import java.lang.reflect.Method
 import java.net.URLClassLoader
-import javax.inject.Inject
-import javax.inject.Singleton
 
 class KotlinToolchain private constructor(
   private val baseJars: List<File>,
@@ -194,7 +193,7 @@ class KotlinToolchain private constructor(
       )
   }
 
-  val classLoader by lazy {
+  val classLoader: URLClassLoader by lazy {
     runCatching {
       // not system, but platform as parent - we should not include app classpath, only platform (JDK)
       URLClassLoader(baseJars.map { it.toURI().toURL() }.toTypedArray(), ClassLoader.getPlatformClassLoader())
@@ -203,56 +202,55 @@ class KotlinToolchain private constructor(
     }.getOrThrow()
   }
 
-  fun toolchainWithReflect(kotlinReflect: File? = null): KotlinToolchain =
-    KotlinToolchain(
-      baseJars + listOf(kotlinReflect ?: KOTLIN_REFLECT.toFile()),
-      kapt3Plugin,
-      jvmAbiGen,
-      skipCodeGen,
-      jdepsGen,
-      kspSymbolProcessingApi,
-      kspSymbolProcessingCommandLine,
+  fun toolchainWithReflect(kotlinReflect: File? = null): KotlinToolchain {
+    return KotlinToolchain(
+      baseJars = baseJars + listOf(kotlinReflect ?: KOTLIN_REFLECT.toFile()),
+      kapt3Plugin = kapt3Plugin,
+      jvmAbiGen = jvmAbiGen,
+      skipCodeGen = skipCodeGen,
+      jdepsGen = jdepsGen,
+      kspSymbolProcessingApi = kspSymbolProcessingApi,
+      kspSymbolProcessingCommandLine = kspSymbolProcessingCommandLine,
     )
+  }
 
   data class CompilerPlugin(
     val jarPath: String,
     val id: String,
   )
+}
 
-  open class KotlinCliToolInvoker internal constructor(
-    toolchain: KotlinToolchain,
-    clazz: String,
-  ) {
-    private val compiler: Any
-    private val execMethod: Method
-    private val getCodeMethod: Method
+open class KotlinCliToolInvoker internal constructor(
+  toolchain: KotlinToolchain,
+  clazz: String,
+) {
+  private val compiler: Any
+  private val execMethod: Method
+  private val getCodeMethod: Method
 
-    init {
-      val compilerClass = toolchain.classLoader.loadClass(clazz)
-      val exitCodeClass =
-        toolchain.classLoader.loadClass("org.jetbrains.kotlin.cli.common.ExitCode")
+  init {
+    val compilerClass = toolchain.classLoader.loadClass(clazz)
+    val exitCodeClass = toolchain.classLoader.loadClass("org.jetbrains.kotlin.cli.common.ExitCode")
 
-      compiler = compilerClass.getConstructor().newInstance()
-      execMethod =
-        compilerClass.getMethod("exec", PrintStream::class.java, Array<String>::class.java)
-      getCodeMethod = exitCodeClass.getMethod("getCode")
-    }
-
-    // Kotlin error codes:
-    // 1 is a standard compilation error
-    // 2 is an internal error
-    // 3 is the script execution error
-    fun compile(
-      args: Array<String>,
-      out: PrintStream,
-    ): Int {
-      val exitCodeInstance = execMethod.invoke(compiler, out, args)
-      return getCodeMethod.invoke(exitCodeInstance, *NO_ARGS) as Int
-    }
+    compiler = compilerClass.getConstructor().newInstance()
+    execMethod = compilerClass.getMethod("exec", PrintStream::class.java, Array<String>::class.java)
+    getCodeMethod = exitCodeClass.getMethod("getCode")
   }
 
-  class KotlincInvoker(toolchain: KotlinToolchain) : KotlinCliToolInvoker(
-    toolchain = toolchain.toolchainWithReflect(),
-    clazz = "io.bazel.kotlin.compiler.BazelK2JVMCompiler",
-  )
+  // Kotlin error codes:
+  // 1 is a standard compilation error
+  // 2 is an internal error
+  // 3 is the script execution error
+  fun compile(
+    args: Array<String>,
+    out: PrintStream,
+  ): Int {
+    val exitCodeInstance = execMethod.invoke(compiler, out, args)
+    return getCodeMethod.invoke(exitCodeInstance, *NO_ARGS) as Int
+  }
 }
+
+class KotlincInvoker(toolchain: KotlinToolchain) : KotlinCliToolInvoker(
+  toolchain = toolchain.toolchainWithReflect(),
+  clazz = "io.bazel.kotlin.compiler.BazelK2JVMCompiler",
+)
