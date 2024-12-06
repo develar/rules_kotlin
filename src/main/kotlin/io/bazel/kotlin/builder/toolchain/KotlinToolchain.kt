@@ -25,7 +25,7 @@ import java.net.URLClassLoader
 import java.nio.file.Path
 
 class KotlinToolchain private constructor(
-  private val baseJars: List<Path>,
+  internal val baseJars: List<Path>,
   @JvmField val kapt3Plugin: CompilerPlugin,
   @JvmField val jvmAbiGen: CompilerPlugin,
   @JvmField val skipCodeGen: CompilerPlugin,
@@ -133,19 +133,6 @@ class KotlinToolchain private constructor(
         ),
       )
     }
-
-    internal fun createClassLoader(toolchain: KotlinToolchain): URLClassLoader {
-      val baseJars = toolchain.baseJars
-      return try {
-        // not system, but platform as parent - we should not include app classpath, only platform (JDK)
-        URLClassLoader(
-          baseJars.map { it.toUri().toURL() }.toTypedArray(),
-          ClassLoader.getPlatformClassLoader(),
-        )
-      } catch (e: Exception) {
-        throw RuntimeException(baseJars.toString(), e)
-      }
-    }
   }
 
   fun toolchainWithReflect(): KotlinToolchain {
@@ -166,16 +153,24 @@ data class CompilerPlugin(
   @JvmField val id: String,
 )
 
-private val lookup = MethodHandles.lookup()
-
 class KotlincInvoker(toolchain: KotlinToolchain) {
   private val execMethod: MethodHandle
 
   init {
     System.setProperty("zip.handler.uses.crc.instead.of.timestamp", "true")
-    execMethod = lookup.findStatic(
-      KotlinToolchain.createClassLoader(toolchain)
-        .loadClass("io.bazel.kotlin.compiler.BazelK2JVMCompiler"),
+
+    val baseJars = toolchain.baseJars
+    val classloader = try {
+      // not system, but platform as parent - we should not include app classpath, only platform (JDK)
+      URLClassLoader(
+        baseJars.map { it.toUri().toURL() }.toTypedArray(),
+        ClassLoader.getPlatformClassLoader(),
+      )
+    } catch (e: Exception) {
+      throw RuntimeException(baseJars.toString(), e)
+    }
+    execMethod = MethodHandles.lookup().findStatic(
+      classloader.loadClass("io.bazel.kotlin.compiler.BazelK2JVMCompiler"),
       "exec",
       MethodType.methodType(Integer.TYPE, PrintStream::class.java, Array<String>::class.java),
     )
