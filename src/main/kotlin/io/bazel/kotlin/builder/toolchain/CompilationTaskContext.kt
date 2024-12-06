@@ -118,10 +118,7 @@ class CompilationTaskContext(
     val outputStream = ByteArrayOutputStream()
     val ps = PrintStream(outputStream)
     val result = compile(args.toTypedArray(), ps)
-    val output =
-      ByteArrayInputStream(outputStream.toByteArray())
-        .bufferedReader()
-        .readLines()
+    val output = ByteArrayInputStream(outputStream.toByteArray()).bufferedReader().readLines()
     if (result != 0) {
       if (printOnFail) {
         printCompilerOutput(output)

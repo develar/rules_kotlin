@@ -136,50 +136,51 @@ internal fun preProcessingSteps(
   }
 }
 
-internal fun JvmCompilationTask.kspArgs(plugins: InternalCompilerPlugins): CompilationArgs =
-  CompilationArgs().apply {
-    plugin(plugins.kspSymbolProcessingCommandLine)
-    plugin(plugins.kspSymbolProcessingApi) {
-      flag("-Xallow-no-source-files")
+internal fun JvmCompilationTask.kspArgs(plugins: InternalCompilerPlugins): CompilationArgs {
+  val args = CompilationArgs()
+  args.plugin(plugins.kspSymbolProcessingCommandLine)
+  args.plugin(plugins.kspSymbolProcessingApi) {
+    args.flag("-Xallow-no-source-files")
 
-      val values =
-        arrayOf(
-          "apclasspath" to listOf(inputs.processorpathsList.joinToString(File.pathSeparator)),
-          // projectBaseDir shouldn't matter because incremental is disabled
-          "projectBaseDir" to listOf(directories.incrementalData),
-          // Disable incremental mode
-          "incremental" to listOf("false"),
-          // Directory where class files are written to. Files written to this directory are class
-          // files being written directly from the annotation processor, not Kotlinc
-          "classOutputDir" to listOf(directories.generatedClasses),
-          // Directory where generated Java sources files are written to
-          "javaOutputDir" to listOf(directories.generatedJavaSources),
-          // Directory where generated Kotlin sources files are written to
-          "kotlinOutputDir" to listOf(directories.generatedSources),
-          // Directory where META-INF data is written to. This might not be the most ideal place to
-          // write this. Maybe just directly to the classes' directory?
-          "resourceOutputDir" to listOf(directories.generatedSources),
-          // TODO(bencodes) Not sure what this directory is yet.
-          "kspOutputDir" to listOf(directories.incrementalData),
-          // Directory to write KSP caches. Shouldn't matter because incremental is disabled
-          "cachesDir" to listOf(directories.incrementalData),
-          // Set withCompilation to false because we run this as part of the standard kotlinc pass
-          // If we ever want to flip this to true, we probably want to integrate this directly
-          // into the KotlinCompile action.
-          "withCompilation" to listOf("false"),
-          // Set returnOkOnError to false because we want to fail the build if there are any errors
-          "returnOkOnError" to listOf("false"),
-          // TODO(bencodes) This should probably be enabled via some KSP options
-          "allWarningsAsErrors" to listOf("false"),
-        )
+    val values =
+      arrayOf(
+        "apclasspath" to listOf(inputs.processorpathsList.joinToString(File.pathSeparator)),
+        // projectBaseDir shouldn't matter because incremental is disabled
+        "projectBaseDir" to listOf(directories.incrementalData),
+        // Disable incremental mode
+        "incremental" to listOf("false"),
+        // Directory where class files are written to. Files written to this directory are class
+        // files being written directly from the annotation processor, not Kotlinc
+        "classOutputDir" to listOf(directories.generatedClasses),
+        // Directory where generated Java sources files are written to
+        "javaOutputDir" to listOf(directories.generatedJavaSources),
+        // Directory where generated Kotlin sources files are written to
+        "kotlinOutputDir" to listOf(directories.generatedSources),
+        // Directory where META-INF data is written to. This might not be the most ideal place to
+        // write this. Maybe just directly to the classes' directory?
+        "resourceOutputDir" to listOf(directories.generatedSources),
+        // TODO(bencodes) Not sure what this directory is yet.
+        "kspOutputDir" to listOf(directories.incrementalData),
+        // Directory to write KSP caches. Shouldn't matter because incremental is disabled
+        "cachesDir" to listOf(directories.incrementalData),
+        // Set withCompilation to false because we run this as part of the standard kotlinc pass
+        // If we ever want to flip this to true, we probably want to integrate this directly
+        // into the KotlinCompile action.
+        "withCompilation" to listOf("false"),
+        // Set returnOkOnError to false because we want to fail the build if there are any errors
+        "returnOkOnError" to listOf("false"),
+        // TODO(bencodes) This should probably be enabled via some KSP options
+        "allWarningsAsErrors" to listOf("false"),
+      )
 
-      for (pair in values) {
-        for (value in pair.second) {
-          flag(pair.first, value)
-        }
+    for (pair in values) {
+      for (value in pair.second) {
+        args.flag(pair.first, value)
       }
     }
   }
+  return args
+}
 
 internal fun runPlugins(
   compilationTask: JvmCompilationTask,
@@ -261,69 +262,6 @@ internal fun JvmCompilationTask.createOutputJar() {
 }
 
 /**
- * Produce the primary output jar.
- */
-internal fun JvmCompilationTask.createAbiJar() =
-  JarCreator(
-    path = Path.of(outputs.abijar),
-    targetLabel = info.label,
-    injectingRuleKind = info.bazelRuleKind,
-  ).use {
-    it.addDirectory(Path.of(directories.abiClasses))
-    it.addDirectory(Path.of(directories.generatedClasses))
-  }
-
-/**
- * Produce a jar of sources generated by KAPT.
- */
-internal fun JvmCompilationTask.createGeneratedJavaSrcJar() {
-  JarCreator(
-    path = Path.of(outputs.generatedJavaSrcJar),
-    targetLabel = info.label,
-    injectingRuleKind = info.bazelRuleKind,
-  ).use {
-    it.addDirectory(Path.of(directories.generatedJavaSources))
-  }
-}
-
-/**
- * Produce a stub jar of classes generated by KAPT.
- */
-internal fun JvmCompilationTask.createGeneratedStubJar() {
-  JarCreator(
-    path = Path.of(outputs.generatedJavaStubJar),
-    targetLabel = info.label,
-    injectingRuleKind = info.bazelRuleKind,
-  ).use {
-    it.addDirectory(Path.of(directories.incrementalData))
-  }
-}
-
-/**
- * Produce a jar of classes generated by KAPT.
- */
-internal fun JvmCompilationTask.createGeneratedClassJar() {
-  JarCreator(
-    path = Path.of(outputs.generatedClassJar),
-    targetLabel = info.label,
-    injectingRuleKind = info.bazelRuleKind,
-  ).use {
-    it.addDirectory(Path.of(directories.generatedClasses))
-  }
-}
-
-internal fun JvmCompilationTask.createGeneratedKspKotlinSrcJar() {
-  JarCreator(
-    path = Path.of(outputs.generatedKspSrcJar),
-    targetLabel = info.label,
-    injectingRuleKind = info.bazelRuleKind,
-  ).use {
-    it.addDirectory(Path.of(directories.generatedSources))
-    it.addDirectory(Path.of(directories.generatedJavaSources))
-  }
-}
-
-/**
  * Compiles Kotlin sources to classes. Does not compile Java sources.
  */
 fun compileKotlin(
@@ -385,7 +323,7 @@ fun compileKotlin(
 private val Directories.stubs
   get() = Files.createDirectories(Path.of(temp).resolve("stubs")).toString()
 
-private val Directories.incrementalData
+val Directories.incrementalData
   get() = Files.createDirectories(Path.of(temp).resolve("incrementalData")).toString()
 
 /**

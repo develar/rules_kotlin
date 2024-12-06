@@ -243,11 +243,7 @@ private fun buildJvmTask(
         { addKotlinSources(it) },
         { addJavaSources(it) },
       )
-    argMap
-      .optional(KotlinBuilderFlags.SOURCE_JARS)
-      ?.also {
-        addAllSourceJars(it)
-      }
+    argMap.optional(KotlinBuilderFlags.SOURCE_JARS)?.also { addAllSourceJars(it) }
   }
 
   with(root.infoBuilder) {

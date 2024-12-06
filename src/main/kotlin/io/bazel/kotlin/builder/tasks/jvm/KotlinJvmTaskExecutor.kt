@@ -16,10 +16,12 @@
  */
 package io.bazel.kotlin.builder.tasks.jvm
 
-import io.bazel.kotlin.builder.toolchain.CompilationStatusException
 import io.bazel.kotlin.builder.toolchain.CompilationTaskContext
 import io.bazel.kotlin.builder.toolchain.KotlincInvoker
+import io.bazel.kotlin.builder.utils.bazelRuleKind
+import io.bazel.kotlin.builder.utils.jars.JarCreator
 import io.bazel.kotlin.model.JvmCompilationTask
+import java.nio.file.Path
 
 class KotlinJvmTaskExecutor(
   private val compiler: KotlincInvoker,
@@ -32,90 +34,47 @@ class KotlinJvmTaskExecutor(
     val preprocessedTask = runPlugins(preProcessingSteps(task, context), context, plugins, compiler)
     context.execute("compile classes") {
       if (preprocessedTask.compileKotlin) {
-        doCompile(preprocessedTask, context, compiler, plugins)
+        context.execute("kotlinc") {
+          doCompileKotlin(preprocessedTask, context, compiler, plugins)
+        }
       }
       doExecute(preprocessedTask, context)
     }
   }
 }
 
-private fun combine(
-  one: Throwable?,
-  two: Throwable?,
-): Throwable? {
-  return when {
-    one != null && two != null -> {
-      one.addSuppressed(two)
-      return one
-    }
-
-    one != null -> one
-    else -> two
-  }
-}
-
-private fun doCompile(
+private fun doCompileKotlin(
   preprocessedTask: JvmCompilationTask,
   context: CompilationTaskContext,
   compiler: KotlincInvoker,
-  plugins: InternalCompilerPlugins
+  plugins: InternalCompilerPlugins,
 ) {
   val outputs = preprocessedTask.outputs
-  sequenceOf(
-    runCatching {
-      if (preprocessedTask.compileKotlin) {
-        context.execute("kotlinc") {
-          compileKotlin(
-            compilationTask = preprocessedTask,
-            context = context,
-            compiler = compiler,
-            args = preprocessedTask.baseArgs()
-              .given(outputs.jdeps)
-              .notEmpty {
-                plugin(plugins.jdeps) {
-                  flag("output", outputs.jdeps)
-                  flag("target_label", preprocessedTask.info.label)
-                  preprocessedTask.inputs.directDependenciesList.forEach {
-                    flag("direct_dependencies", it)
-                  }
-                  flag("strict_kotlin_deps", preprocessedTask.info.strictKotlinDeps)
-                }
-              }.given(outputs.jar)
-              .notEmpty {
-                append(codeGenArgs(preprocessedTask))
-              }.given(outputs.abijar)
-              .notEmpty {
-                plugin(plugins.jvmAbiGen) {
-                  flag("outputDir", preprocessedTask.directories.abiClasses)
-                }
-                given(outputs.jar).empty {
-                  plugin(plugins.skipCodeGen)
-                }
-              },
-            printOnFail = false,
-          )
+  compileKotlin(
+    compilationTask = preprocessedTask,
+    context = context,
+    compiler = compiler,
+    args = preprocessedTask.baseArgs().given(outputs.jdeps).notEmpty {
+      plugin(plugins.jdeps) {
+        flag("output", outputs.jdeps)
+        flag("target_label", preprocessedTask.info.label)
+        preprocessedTask.inputs.directDependenciesList.forEach {
+          flag("direct_dependencies", it)
         }
-      } else {
-        emptyList()
+        flag("strict_kotlin_deps", preprocessedTask.info.strictKotlinDeps)
+      }
+    }.given(outputs.jar).notEmpty {
+      append(codeGenArgs(preprocessedTask))
+    }.given(outputs.abijar).notEmpty {
+      plugin(plugins.jvmAbiGen) {
+        flag("outputDir", preprocessedTask.directories.abiClasses)
+      }
+      given(outputs.jar).empty {
+        plugin(plugins.skipCodeGen)
       }
     },
-  ).map {
-    (it.getOrNull() ?: emptyList()) to it.exceptionOrNull()
-  }.map {
-    // TODO(issue/296): remove when the CompilationStatusException is unified.
-    if (it.second is CompilationStatusException) {
-      (it.second as CompilationStatusException).lines + it.first to it.second
-    } else {
-      it
-    }
-  }.fold(Pair<List<String>, Throwable?>(emptyList(), null)) { acc, result ->
-    acc.first + result.first to combine(acc.second, result.second)
-  }.apply {
-    first.apply(context::printCompilerOutput)
-    second?.let {
-      throw it
-    }
-  }
+    printOnFail = false,
+  )
 }
 
 private fun doExecute(
@@ -134,30 +93,60 @@ private fun doExecute(
     }
   }
   if (outputs.abijar.isNotEmpty()) {
-    context.execute("create abi jar", preprocessedTask::createAbiJar)
+    context.execute("create abi jar") {
+      JarCreator(
+        path = Path.of(preprocessedTask.outputs.abijar),
+        targetLabel = preprocessedTask.info.label,
+        injectingRuleKind = preprocessedTask.info.bazelRuleKind,
+      ).use {
+        it.addDirectory(Path.of(preprocessedTask.directories.abiClasses))
+        it.addDirectory(Path.of(preprocessedTask.directories.generatedClasses))
+      }
+    }
   }
   if (outputs.generatedJavaSrcJar.isNotEmpty()) {
-    context.execute(
-      "creating KAPT generated Java source jar",
-      preprocessedTask::createGeneratedJavaSrcJar,
-    )
+    context.execute("creating KAPT generated Java source jar") {
+      JarCreator(
+        path = Path.of(preprocessedTask.outputs.generatedJavaSrcJar),
+        targetLabel = preprocessedTask.info.label,
+        injectingRuleKind = preprocessedTask.info.bazelRuleKind,
+      ).use {
+        it.addDirectory(Path.of(preprocessedTask.directories.generatedJavaSources))
+      }
+    }
   }
   if (outputs.generatedJavaStubJar.isNotEmpty()) {
-    context.execute(
-      "creating KAPT generated Kotlin stubs jar",
-      preprocessedTask::createGeneratedStubJar,
-    )
+    context.execute("creating KAPT generated Kotlin stubs jar") {
+      JarCreator(
+        path = Path.of(preprocessedTask.outputs.generatedJavaStubJar),
+        targetLabel = preprocessedTask.info.label,
+        injectingRuleKind = preprocessedTask.info.bazelRuleKind,
+      ).use {
+        it.addDirectory(Path.of(preprocessedTask.directories.incrementalData))
+      }
+    }
   }
   if (outputs.generatedClassJar.isNotEmpty()) {
-    context.execute(
-      "creating KAPT generated stub class jar",
-      preprocessedTask::createGeneratedClassJar,
-    )
+    context.execute("creating KAPT generated stub class jar") {
+      JarCreator(
+        path = Path.of(preprocessedTask.outputs.generatedClassJar),
+        targetLabel = preprocessedTask.info.label,
+        injectingRuleKind = preprocessedTask.info.bazelRuleKind,
+      ).use {
+        it.addDirectory(Path.of(preprocessedTask.directories.generatedClasses))
+      }
+    }
   }
   if (outputs.generatedKspSrcJar.isNotEmpty()) {
-    context.execute(
-      "creating KSP generated src jar",
-      preprocessedTask::createGeneratedKspKotlinSrcJar,
-    )
+    context.execute("creating KSP generated src jar") {
+      JarCreator(
+        path = Path.of(preprocessedTask.outputs.generatedKspSrcJar),
+        targetLabel = preprocessedTask.info.label,
+        injectingRuleKind = preprocessedTask.info.bazelRuleKind,
+      ).use {
+        it.addDirectory(Path.of(preprocessedTask.directories.generatedSources))
+        it.addDirectory(Path.of(preprocessedTask.directories.generatedJavaSources))
+      }
+    }
   }
 }
