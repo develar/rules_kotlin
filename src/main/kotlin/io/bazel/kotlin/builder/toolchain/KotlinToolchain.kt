@@ -147,8 +147,8 @@ class KotlinToolchain private constructor(
       kotlinxSerializationCoreJvm: File,
       kotlinxSerializationJson: File,
       kotlinxSerializationJsonJvm: File,
-    ): KotlinToolchain =
-      KotlinToolchain(
+    ): KotlinToolchain {
+      return KotlinToolchain(
         baseJars = listOf(
           kotlinc,
           compiler,
@@ -189,15 +189,20 @@ class KotlinToolchain private constructor(
           "com.google.devtools.ksp.symbol-processing",
         ),
       )
-  }
+    }
 
-  val classLoader: URLClassLoader by lazy {
-    runCatching {
-      // not system, but platform as parent - we should not include app classpath, only platform (JDK)
-      URLClassLoader(baseJars.map { it.toURI().toURL() }.toTypedArray(), ClassLoader.getPlatformClassLoader())
-    }.onFailure<URLClassLoader> {
-      throw RuntimeException("$baseJars", it)
-    }.getOrThrow()
+    internal fun createClassLoader(toolchain: KotlinToolchain): URLClassLoader {
+      val baseJars = toolchain.baseJars
+      return try {
+        // not system, but platform as parent - we should not include app classpath, only platform (JDK)
+        URLClassLoader(
+          baseJars.map { it.toURI().toURL() }.toTypedArray(),
+          ClassLoader.getPlatformClassLoader(),
+        )
+      } catch (e: Exception) {
+        throw RuntimeException(baseJars.toString(), e)
+      }
+    }
   }
 
   fun toolchainWithReflect(kotlinReflect: File? = null): KotlinToolchain {
@@ -226,7 +231,7 @@ class KotlincInvoker(toolchain: KotlinToolchain) {
   init {
     System.setProperty("zip.handler.uses.crc.instead.of.timestamp", "true")
     execMethod = lookup.findStatic(
-      toolchain.classLoader.loadClass("io.bazel.kotlin.compiler.BazelK2JVMCompiler"),
+      KotlinToolchain.createClassLoader(toolchain).loadClass("io.bazel.kotlin.compiler.BazelK2JVMCompiler"),
       "exec",
       MethodType.methodType(Integer.TYPE, PrintStream::class.java, Array<String>::class.java),
     )
