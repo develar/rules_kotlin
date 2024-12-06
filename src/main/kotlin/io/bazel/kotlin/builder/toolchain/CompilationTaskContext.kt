@@ -16,8 +16,6 @@
  */
 package io.bazel.kotlin.builder.toolchain
 
-import com.google.protobuf.MessageOrBuilder
-import com.google.protobuf.TextFormat
 import io.bazel.kotlin.model.CompilationTaskInfo
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
@@ -36,7 +34,7 @@ class CompilationTaskContext(
   @JvmField val isTracing: Boolean
 
   init {
-    val debugging = HashSet(info.debugList)
+    val debugging = HashSet(info.debug)
     timings = if (debugging.contains("timings")) mutableListOf() else null
     isTracing = debugging.contains("trace")
   }
@@ -72,16 +70,6 @@ class CompilationTaskContext(
 
   inline fun whenTracing(block: CompilationTaskContext.() -> Unit) {
     if (isTracing) block() else null
-  }
-
-  /**
-   * Print a proto message if debugging is enabled for the task.
-   */
-  fun printProto(
-    header: String,
-    msg: MessageOrBuilder,
-  ) {
-    printLines(header = header, lines = TextFormat.printer().printToString(msg).splitToSequence('\n'), filterEmpty = true)
   }
 
   /**

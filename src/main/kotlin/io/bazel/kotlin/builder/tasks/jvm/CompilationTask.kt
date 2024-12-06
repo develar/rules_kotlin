@@ -51,16 +51,16 @@ private const val MANIFEST_DIR = "META-INF/"
 
 fun codeGenArgs(compilationTask: JvmCompilationTask): CompilationArgs {
   return CompilationArgs()
-    .absolutePaths(compilationTask.info.friendPathsList) {
+    .absolutePaths(compilationTask.info.friendPaths) {
       "-Xfriend-paths=${it.joinToString(X_FRIENDS_PATH_SEPARATOR)}"
     }.flag("-d", compilationTask.directories.classes)
-    .values(compilationTask.info.passthroughFlagsList)
+    .values(compilationTask.info.passthroughFlags)
 }
 
 fun JvmCompilationTask.baseArgs(overrides: Map<String, String> = emptyMap()): CompilationArgs {
   val classpath: Sequence<String> = if (info.reducedClasspathMode == "KOTLINBUILDER_REDUCED") {
     val transitiveDepsForCompile = LinkedHashSet<String>()
-    for (jdepsPath in inputs.depsArtifactsList) {
+    for (jdepsPath in inputs.depsArtifacts) {
       BufferedInputStream(Files.newInputStream(Path.of(jdepsPath))).use {
         val deps = Dependencies.parseFrom(it)
         for (dep in deps.dependencyList) {
@@ -70,10 +70,10 @@ fun JvmCompilationTask.baseArgs(overrides: Map<String, String> = emptyMap()): Co
         }
       }
     }
-    inputs.directDependenciesList.asSequence() + transitiveDepsForCompile
+    inputs.directDependencies.asSequence() + transitiveDepsForCompile
   }
   else {
-    inputs.classpathList.asSequence()
+    inputs.classpath.asSequence()
   }
 
   val classPathString = (classpath + directories.generatedClasses).joinToString(File.pathSeparator)
@@ -81,12 +81,12 @@ fun JvmCompilationTask.baseArgs(overrides: Map<String, String> = emptyMap()): Co
   val compilationArgs = CompilationArgs()
   compilationArgs.flag("-cp").value(classPathString)
   return compilationArgs
-    .flag(API_VERSION_ARG, overrides[API_VERSION_ARG] ?: info.toolchainInfo.common.apiVersion)
+    .flag(API_VERSION_ARG, overrides[API_VERSION_ARG] ?: info.toolchainInfo.apiVersion)
     .flag(
       LANGUAGE_VERSION_ARG,
-      overrides[LANGUAGE_VERSION_ARG] ?: info.toolchainInfo.common.languageVersion,
+      overrides[LANGUAGE_VERSION_ARG] ?: info.toolchainInfo.languageVersion,
     )
-    .flag("-jvm-target", info.toolchainInfo.jvm.jvmTarget)
+    .flag("-jvm-target", info.toolchainInfo.jvmTarget!!)
     .flag("-module-name", info.moduleName)
 }
 
@@ -122,16 +122,16 @@ internal fun preProcessingSteps(
   context: CompilationTaskContext,
 ): JvmCompilationTask {
   return context.execute("expand sources") {
-    if (task.inputs.sourceJarsList.isEmpty()) {
+    if (task.inputs.sourceJars.isEmpty()) {
       task
     } else {
       val sourceJarExtractor = SourceJarExtractor(
         destDir = Path.of(task.directories.temp).resolve(SOURCE_JARS_DIR),
         fileMatcher = { str -> IS_JVM_SOURCE_FILE.test(str) || "/$MANIFEST_DIR" in str },
       )
-      sourceJarExtractor.jarFiles.addAll(task.inputs.sourceJarsList.map { p -> Path.of(p) })
+      sourceJarExtractor.jarFiles.addAll(task.inputs.sourceJars.map { p -> Path.of(p) })
       sourceJarExtractor.execute()
-      task.expandWithSources(sourceJarExtractor.sourcesList.iterator())
+      expandWithSources(task, sourceJarExtractor.sourcesList.iterator())
     }
   }
 }
@@ -144,7 +144,7 @@ internal fun JvmCompilationTask.kspArgs(plugins: InternalCompilerPlugins): Compi
 
     val values =
       arrayOf(
-        "apclasspath" to listOf(inputs.processorpathsList.joinToString(File.pathSeparator)),
+        "apclasspath" to listOf(inputs.processorpaths.joinToString(File.pathSeparator)),
         // projectBaseDir shouldn't matter because incremental is disabled
         "projectBaseDir" to listOf(directories.incrementalData),
         // Disable incremental mode
@@ -188,8 +188,8 @@ internal fun runPlugins(
   plugins: InternalCompilerPlugins,
   compiler: KotlincInvoker,
 ): JvmCompilationTask {
-  if ((compilationTask.inputs.processorsList.isEmpty() && compilationTask.inputs.stubsPluginClasspathList.isEmpty()) ||
-    compilationTask.inputs.kotlinSourcesList.isEmpty()) {
+  if ((compilationTask.inputs.processors.isEmpty() && compilationTask.inputs.stubsPluginClasspath.isEmpty()) ||
+    compilationTask.inputs.kotlinSources.isEmpty()) {
     return compilationTask
   }
   return when {
@@ -207,20 +207,16 @@ private fun JvmCompilationTask.runKspPlugin(
   plugins: InternalCompilerPlugins,
   compiler: KotlincInvoker,
 ): JvmCompilationTask {
-  return context.execute("Ksp (${inputs.processorsList.joinToString(", ")})") {
-    val overrides =
-      mutableMapOf(
-        API_VERSION_ARG to kspKotlinToolchainVersion(info.toolchainInfo.common.apiVersion),
-        LANGUAGE_VERSION_ARG to
-          kspKotlinToolchainVersion(
-            info.toolchainInfo.common.languageVersion,
-          ),
-      )
+  return context.execute("Ksp (${inputs.processors.joinToString(", ")})") {
+    val overrides = mutableMapOf(
+      API_VERSION_ARG to kspKotlinToolchainVersion(info.toolchainInfo.apiVersion),
+      LANGUAGE_VERSION_ARG to kspKotlinToolchainVersion(info.toolchainInfo.languageVersion),
+    )
     baseArgs(overrides)
       .plus(kspArgs(plugins))
       .flag("-d", directories.generatedClasses)
-      .values(inputs.kotlinSourcesList)
-      .values(inputs.javaSourcesList)
+      .values(inputs.kotlinSources)
+      .values(inputs.javaSources)
       .list()
       .let { args ->
         context.executeCompilerTask(
@@ -236,7 +232,7 @@ tracing then any compiler output would make it's way to the console as is.
         context.whenTracing {
           printLines("Ksp output", outputLines.asSequence())
         }
-        return@let expandWithGeneratedSources()
+        return@let expandWithGeneratedSources(this)
       }
   }
 }
@@ -272,7 +268,7 @@ fun compileKotlin(
   printOnFail: Boolean = true,
 ): List<String> {
   val inputs = compilationTask.inputs
-  if (inputs.kotlinSourcesList.isEmpty()) {
+  if (inputs.kotlinSources.isEmpty()) {
     val file = Path.of(compilationTask.outputs.jdeps)
     Files.deleteIfExists(file)
     Files.newOutputStream(Files.createFile(file)).use {
@@ -288,11 +284,11 @@ fun compileKotlin(
     args +
       plugins(
         compilationTask = compilationTask,
-        options = inputs.compilerPluginOptionsList,
-        classpath = inputs.compilerPluginClasspathList,
+        options = inputs.compilerPluginOptions,
+        classpath = inputs.compilerPluginClasspath,
       )
-    ).values(inputs.javaSourcesList)
-    .values(inputs.kotlinSourcesList)
+    ).values(inputs.javaSources)
+    .values(inputs.kotlinSources)
     .flag("-d", dirs.classes)
     .list()
   context.whenTracing {
@@ -327,13 +323,14 @@ val Directories.incrementalData
   get() = Files.createDirectories(Path.of(temp).resolve("incrementalData")).toString()
 
 /**
- * Create a new [JvmCompilationTask] with sources found in the generatedSources directory. This should be run after
- * annotation processors have been run.
+ * Create a new [JvmCompilationTask] with sources found in the generatedSources directory.
+ * This should be run after annotation processors have been run.
  */
-fun JvmCompilationTask.expandWithGeneratedSources(): JvmCompilationTask {
+fun expandWithGeneratedSources(task: JvmCompilationTask): JvmCompilationTask {
   return expandWithSources(
+    task,
     Stream
-      .of(directories.generatedSources, directories.generatedJavaSources)
+      .of(task.directories.generatedSources, task.directories.generatedJavaSources)
       .map { s -> Path.of(s) }
       .flatMap { p -> Files.walk(p) }
       .filter { !Files.isDirectory(it) }
@@ -343,23 +340,22 @@ fun JvmCompilationTask.expandWithGeneratedSources(): JvmCompilationTask {
   )
 }
 
-private fun JvmCompilationTask.expandWithSources(sources: Iterator<String>): JvmCompilationTask =
-  updateBuilder { builder ->
-    copyManifestFilesToGeneratedClasses(sources, directories)
-      .filterOutNonCompilableSources()
-      .partitionJvmSources(
-        { builder.inputsBuilder.addKotlinSources(it) },
-        { builder.inputsBuilder.addJavaSources(it) },
-      )
-  }
+private fun expandWithSources(task: JvmCompilationTask, sources: Iterator<String>): JvmCompilationTask {
+  val kotlinSources = task.inputs.kotlinSources.toMutableList()
+  val javaSources = task.inputs.javaSources.toMutableList()
+  filterOutNonCompilableSources(copyManifestFilesToGeneratedClasses(sources, task.directories))
+    .partitionJvmSources(
+      kt = { kotlinSources.add(it) },
+      java = { javaSources.add(it) },
+    )
 
-private fun JvmCompilationTask.updateBuilder(
-  block: (JvmCompilationTask.Builder) -> Unit,
-): JvmCompilationTask =
-  toBuilder().let {
-    block(it)
-    it.build()
-  }
+  return task.copy(
+    inputs = task.inputs.copy(
+      kotlinSources = java.util.List.copyOf(kotlinSources),
+      javaSources = java.util.List.copyOf(javaSources)
+    ),
+  )
+}
 
 /**
  * Copy generated manifest files from KSP task into generated folder
@@ -388,9 +384,9 @@ internal fun copyManifestFilesToGeneratedClasses(
 /**
  * Only keep java and kotlin files for the iterator. Filter all other non-compilable files.
  */
-private fun Iterator<String>.filterOutNonCompilableSources(): Iterator<String> {
+private fun filterOutNonCompilableSources(iterator: Iterator<String>): Iterator<String> {
   val result = mutableListOf<String>()
-  this.forEach {
+  iterator.forEach {
     if (it.endsWith(".kt") or it.endsWith(".java")) result.add(it)
   }
   return result.iterator()

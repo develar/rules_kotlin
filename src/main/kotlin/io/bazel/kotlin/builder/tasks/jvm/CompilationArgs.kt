@@ -33,18 +33,19 @@ class CompilationArgs(
   private val dfs: FileSystem = FileSystems.getDefault(),
 ) {
   class StringConditional(
-    val value: String,
+    val value: String?,
     val parent: CompilationArgs,
   ) {
     fun notEmpty(conditionalArgs: CompilationArgs.(it: String) -> Unit): CompilationArgs {
-      if (value.isNotEmpty()) {
-        parent.conditionalArgs(value)
+      if (value.isNullOrEmpty()) {
+        return parent
       }
+      parent.conditionalArgs(value)
       return parent
     }
 
-    fun empty(conditionalArgs: CompilationArgs.(it: String) -> Unit): CompilationArgs {
-      if (value.isEmpty()) {
+    fun empty(conditionalArgs: CompilationArgs.(it: String?) -> Unit): CompilationArgs {
+      if (value.isNullOrEmpty()) {
         parent.conditionalArgs(value)
       }
       return parent
@@ -88,12 +89,11 @@ class CompilationArgs(
     return this
   }
 
-  fun given(value: String): StringConditional = StringConditional(value, this)
+  fun given(value: String?): StringConditional = StringConditional(value, this)
 
-  operator fun plus(other: CompilationArgs): CompilationArgs =
-    CompilationArgs(
-      (args.asSequence() + other.args.asSequence()).toMutableList(),
-    )
+  operator fun plus(other: CompilationArgs): CompilationArgs {
+    return CompilationArgs((args.asSequence() + other.args.asSequence()).toMutableList())
+  }
 
   fun absolutePaths(
     paths: Collection<String>,

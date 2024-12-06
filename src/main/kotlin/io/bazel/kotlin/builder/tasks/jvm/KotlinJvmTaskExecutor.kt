@@ -56,9 +56,9 @@ private fun doCompileKotlin(
     compiler = compiler,
     args = preprocessedTask.baseArgs().given(outputs.jdeps).notEmpty {
       plugin(plugins.jdeps) {
-        flag("output", outputs.jdeps)
+        flag("output", outputs.jdeps!!)
         flag("target_label", preprocessedTask.info.label)
-        preprocessedTask.inputs.directDependenciesList.forEach {
+        preprocessedTask.inputs.directDependencies.forEach {
           flag("direct_dependencies", it)
         }
         flag("strict_kotlin_deps", preprocessedTask.info.strictKotlinDeps)
@@ -67,7 +67,7 @@ private fun doCompileKotlin(
       append(codeGenArgs(preprocessedTask))
     }.given(outputs.abijar).notEmpty {
       plugin(plugins.jvmAbiGen) {
-        flag("outputDir", preprocessedTask.directories.abiClasses)
+        flag("outputDir", preprocessedTask.directories.abiClasses!!)
       }
       given(outputs.jar).empty {
         plugin(plugins.skipCodeGen)
@@ -82,7 +82,7 @@ private fun doExecute(
   context: CompilationTaskContext,
 ) {
   val outputs = preprocessedTask.outputs
-  if (outputs.jar.isNotEmpty()) {
+  if (!outputs.jar.isNullOrEmpty()) {
     if (preprocessedTask.instrumentCoverage) {
       context.execute(
         "create instrumented jar",
@@ -92,7 +92,7 @@ private fun doExecute(
       context.execute("create jar", preprocessedTask::createOutputJar)
     }
   }
-  if (outputs.abijar.isNotEmpty()) {
+  if (!outputs.abijar.isNullOrEmpty()) {
     context.execute("create abi jar") {
       JarCreator(
         path = Path.of(preprocessedTask.outputs.abijar),
@@ -104,7 +104,7 @@ private fun doExecute(
       }
     }
   }
-  if (outputs.generatedJavaSrcJar.isNotEmpty()) {
+  if (!outputs.generatedJavaSrcJar.isNullOrEmpty()) {
     context.execute("creating KAPT generated Java source jar") {
       JarCreator(
         path = Path.of(preprocessedTask.outputs.generatedJavaSrcJar),
@@ -115,7 +115,7 @@ private fun doExecute(
       }
     }
   }
-  if (outputs.generatedJavaStubJar.isNotEmpty()) {
+  if (!outputs.generatedJavaStubJar.isNullOrEmpty()) {
     context.execute("creating KAPT generated Kotlin stubs jar") {
       JarCreator(
         path = Path.of(preprocessedTask.outputs.generatedJavaStubJar),
@@ -126,7 +126,7 @@ private fun doExecute(
       }
     }
   }
-  if (outputs.generatedClassJar.isNotEmpty()) {
+  if (!outputs.generatedClassJar.isNullOrEmpty()) {
     context.execute("creating KAPT generated stub class jar") {
       JarCreator(
         path = Path.of(preprocessedTask.outputs.generatedClassJar),
@@ -137,7 +137,7 @@ private fun doExecute(
       }
     }
   }
-  if (outputs.generatedKspSrcJar.isNotEmpty()) {
+  if (!outputs.generatedKspSrcJar.isNullOrEmpty()) {
     context.execute("creating KSP generated src jar") {
       JarCreator(
         path = Path.of(preprocessedTask.outputs.generatedKspSrcJar),

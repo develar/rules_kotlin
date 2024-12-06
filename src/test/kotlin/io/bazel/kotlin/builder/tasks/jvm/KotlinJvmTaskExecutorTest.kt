@@ -3,7 +3,6 @@ package io.bazel.kotlin.builder.tasks.jvm
 import io.bazel.kotlin.builder.KotlinJvmTestBuilder
 import org.junit.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
@@ -36,22 +35,22 @@ class KotlinJvmTaskExecutorTest {
     )
     val compileTask = ctx.buildTask()
 
-    assertTrue(compileTask.inputs.javaSourcesList.isEmpty())
-    assertTrue(compileTask.inputs.kotlinSourcesList.isEmpty())
+    assertTrue(compileTask.inputs.javaSources.isEmpty())
+    assertTrue(compileTask.inputs.kotlinSources.isEmpty())
 
-    val expandedCompileTask = compileTask.expandWithGeneratedSources()
+    val expandedCompileTask = expandWithGeneratedSources(compileTask)
 
-    assertTrue(compileTask.inputs.javaSourcesList.isEmpty())
-    assertTrue(compileTask.inputs.kotlinSourcesList.isEmpty())
+    assertTrue(compileTask.inputs.javaSources.isEmpty())
+    assertTrue(compileTask.inputs.kotlinSources.isEmpty())
 
-    assertTrue(expandedCompileTask.hasInputs())
-    assertNotNull(expandedCompileTask.inputs.javaSourcesList.find { path ->
+    assertTrue(expandedCompileTask.inputs.javaSources.isNotEmpty())
+    assertNotNull(expandedCompileTask.inputs.javaSources.find { path ->
       path.endsWith("generated_sources/AnotherGenClass.java")
     })
-    assertEquals(expandedCompileTask.inputs.javaSourcesCount, 1)
-    assertNotNull(expandedCompileTask.inputs.kotlinSourcesList.find { path ->
+    assertEquals(expandedCompileTask.inputs.javaSources.size, 1)
+    assertNotNull(expandedCompileTask.inputs.kotlinSources.find { path ->
       path.endsWith("generated_sources/AGenClass.kt")
     })
-    assertEquals(expandedCompileTask.inputs.kotlinSourcesCount, 1)
+    assertEquals(expandedCompileTask.inputs.kotlinSources.size, 1)
   }
 }

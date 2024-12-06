@@ -28,7 +28,7 @@ internal fun JvmCompilationTask.createCoverageInstrumentedJar() {
     )
   Files.write(
     pathsForCoverage,
-    inputs.javaSourcesList + inputs.kotlinSourcesList,
+    inputs.javaSources + inputs.kotlinSources,
   )
 
   JarCreator(

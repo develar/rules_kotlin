@@ -61,7 +61,7 @@ class ArgMap(
 
   fun mandatory(key: Flag) = mandatory(key.flag)
 
-  fun optional(key: Flag) = optional(key.flag)
+  fun optional(key: Flag): List<String>? = optional(key.flag)
 }
 
 interface Flag {
