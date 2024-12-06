@@ -47,25 +47,6 @@ java_library(
     exports = ["@kotlin_rules_maven//:com_google_auto_value_auto_value_annotations"],
 )
 
-java_plugin(
-    name = "dagger_component_plugin",
-    generates_api = 1,
-    processor_class = "dagger.internal.codegen.ComponentProcessor",
-    visibility = ["//visibility:private"],
-    deps = [
-        "@kotlin_rules_maven//:com_google_dagger_dagger_compiler",
-    ],
-)
-
-java_library(
-    name = "dagger",
-    exported_plugins = [":dagger_component_plugin"],
-    exports = [
-        "@kotlin_rules_maven//:com_google_dagger_dagger",
-        "@kotlin_rules_maven//:javax_inject_javax_inject",
-    ],
-)
-
 java_binary(
     name = "jarjar_runner",
     main_class = "org.pantsbuild.jarjar.Main",

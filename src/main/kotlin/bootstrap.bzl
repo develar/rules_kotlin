@@ -72,7 +72,7 @@ def kt_bootstrap_binary(
 
     jar_jared = name
 
-    # shaded to ensure that libraries it uses are not leaked to the code it's running against (e.g. dagger)
+    # shaded to ensure that libraries it uses are not leaked to the code it's running against
     if not shade_rules == None:
         jar_jared += "_jarjar"
         jar_jar(
