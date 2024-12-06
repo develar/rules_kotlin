@@ -16,17 +16,16 @@
  */
 package io.bazel.kotlin.builder.toolchain
 
-import io.bazel.kotlin.builder.utils.BazelRunFiles
-import io.bazel.kotlin.builder.utils.verified
-import java.io.File
+import io.bazel.kotlin.builder.utils.resolveVerifiedFromProperty
 import java.io.PrintStream
 import java.lang.invoke.MethodHandle
 import java.lang.invoke.MethodHandles
 import java.lang.invoke.MethodType
 import java.net.URLClassLoader
+import java.nio.file.Path
 
 class KotlinToolchain private constructor(
-  private val baseJars: List<File>,
+  private val baseJars: List<Path>,
   @JvmField val kapt3Plugin: CompilerPlugin,
   @JvmField val jvmAbiGen: CompilerPlugin,
   @JvmField val skipCodeGen: CompilerPlugin,
@@ -35,118 +34,62 @@ class KotlinToolchain private constructor(
   @JvmField val kspSymbolProcessingCommandLine: CompilerPlugin,
 ) {
   companion object {
-    private val JVM_ABI_PLUGIN by lazy {
-      BazelRunFiles
-        .resolveVerifiedFromProperty(
-          "@com_github_jetbrains_kotlin...jvm-abi-gen",
-        ).toPath()
-    }
-
     private val KAPT_PLUGIN by lazy {
-      BazelRunFiles
-        .resolveVerifiedFromProperty(
-          "@com_github_jetbrains_kotlin...kapt",
-        ).toPath()
+      resolveVerifiedFromProperty("@com_github_jetbrains_kotlin...kapt")
     }
 
     private val COMPILER by lazy {
-      BazelRunFiles
-        .resolveVerifiedFromProperty(
-          "@rules_kotlin...compiler",
-        ).toPath()
+      resolveVerifiedFromProperty("@rules_kotlin...compiler")
     }
 
     private val SKIP_CODE_GEN_PLUGIN by lazy {
-      BazelRunFiles
-        .resolveVerifiedFromProperty(
-          "@rules_kotlin...skip-code-gen",
-        ).toPath()
+      resolveVerifiedFromProperty("@rules_kotlin...skip-code-gen")
     }
 
     private val JDEPS_GEN_PLUGIN by lazy {
-      BazelRunFiles
-        .resolveVerifiedFromProperty(
-          "@rules_kotlin...jdeps-gen",
-        ).toPath()
-    }
-
-    private val KOTLINC by lazy {
-      BazelRunFiles
-        .resolveVerifiedFromProperty(
-          "@com_github_jetbrains_kotlin...kotlin-compiler",
-        ).toPath()
+      resolveVerifiedFromProperty("@rules_kotlin...jdeps-gen")
     }
 
     private val KSP_SYMBOL_PROCESSING_API by lazy {
-      BazelRunFiles
-        .resolveVerifiedFromProperty(
-          "@com_github_google_ksp...symbol-processing-api",
-        ).toPath()
+      resolveVerifiedFromProperty("@com_github_google_ksp...symbol-processing-api")
     }
 
     private val KSP_SYMBOL_PROCESSING_CMDLINE by lazy {
-      BazelRunFiles
-        .resolveVerifiedFromProperty(
-          "@com_github_google_ksp...symbol-processing-cmdline",
-        ).toPath()
+      resolveVerifiedFromProperty("@com_github_google_ksp...symbol-processing-cmdline")
     }
 
     private val KOTLIN_REFLECT by lazy {
-      BazelRunFiles
-        .resolveVerifiedFromProperty(
-          "@rules_kotlin..kotlin.compiler.kotlin-reflect",
-        ).toPath()
-    }
-
-    private val KOTLINX_SERIALIZATION_CORE_JVM by lazy {
-      BazelRunFiles
-        .resolveVerifiedFromProperty(
-          "@com_github_jetbrains_kotlinx...serialization-core-jvm",
-        ).toPath()
-    }
-
-    private val KOTLINX_SERIALIZATION_JSON by lazy {
-      BazelRunFiles
-        .resolveVerifiedFromProperty(
-          "@com_github_jetbrains_kotlinx...serialization-json",
-        ).toPath()
-    }
-
-    private val KOTLINX_SERIALIZATION_JSON_JVM by lazy {
-      BazelRunFiles
-        .resolveVerifiedFromProperty(
-          "@com_github_jetbrains_kotlinx...serialization-json-jvm",
-        ).toPath()
+      resolveVerifiedFromProperty("@rules_kotlin..kotlin.compiler.kotlin-reflect")
     }
 
     fun createToolchain(): KotlinToolchain {
       return createToolchain(
-        verified(KOTLINC).absoluteFile,
-        verified(COMPILER).absoluteFile,
-        verified(JVM_ABI_PLUGIN).absoluteFile,
-        verified(SKIP_CODE_GEN_PLUGIN).absoluteFile,
-        verified(JDEPS_GEN_PLUGIN).absoluteFile,
-        verified(KAPT_PLUGIN).absoluteFile,
-        KSP_SYMBOL_PROCESSING_API.toFile(),
-        KSP_SYMBOL_PROCESSING_CMDLINE.toFile(),
-        KOTLINX_SERIALIZATION_CORE_JVM.toFile(),
-        KOTLINX_SERIALIZATION_JSON.toFile(),
-        KOTLINX_SERIALIZATION_JSON_JVM.toFile(),
+        kotlinc = resolveVerifiedFromProperty("@com_github_jetbrains_kotlin...kotlin-compiler"),
+        compiler = COMPILER,
+        jvmAbiGenFile = resolveVerifiedFromProperty("@com_github_jetbrains_kotlin...jvm-abi-gen"),
+        skipCodeGenFile = SKIP_CODE_GEN_PLUGIN,
+        jdepsGenFile = JDEPS_GEN_PLUGIN,
+        kaptFile = KAPT_PLUGIN,
+        kspSymbolProcessingApi = KSP_SYMBOL_PROCESSING_API,
+        kspSymbolProcessingCommandLine = KSP_SYMBOL_PROCESSING_CMDLINE,
+        kotlinxSerializationCoreJvm = resolveVerifiedFromProperty("@com_github_jetbrains_kotlinx...serialization-core-jvm"),
+        kotlinxSerializationJson = resolveVerifiedFromProperty("@com_github_jetbrains_kotlinx...serialization-json"),
+        kotlinxSerializationJsonJvm = resolveVerifiedFromProperty("@com_github_jetbrains_kotlinx...serialization-json-jvm"),
       )
     }
 
     fun createToolchain(
-      kotlinc: File,
-      compiler: File,
-      jvmAbiGenFile: File,
-      skipCodeGenFile: File,
-      jdepsGenFile: File,
-      kaptFile: File,
-      kspSymbolProcessingApi: File,
-      kspSymbolProcessingCommandLine: File,
-      kotlinxSerializationCoreJvm: File,
-      kotlinxSerializationJson: File,
-      kotlinxSerializationJsonJvm: File,
+      kotlinc: Path,
+      compiler: Path,
+      jvmAbiGenFile: Path,
+      skipCodeGenFile: Path,
+      jdepsGenFile: Path,
+      kaptFile: Path,
+      kspSymbolProcessingApi: Path,
+      kspSymbolProcessingCommandLine: Path,
+      kotlinxSerializationCoreJvm: Path,
+      kotlinxSerializationJson: Path,
+      kotlinxSerializationJsonJvm: Path,
     ): KotlinToolchain {
       return KotlinToolchain(
         baseJars = listOf(
@@ -165,27 +108,27 @@ class KotlinToolchain private constructor(
           kotlinxSerializationJsonJvm,
         ),
         jvmAbiGen = CompilerPlugin(
-          jvmAbiGenFile.path,
+          jvmAbiGenFile.toString(),
           "org.jetbrains.kotlin.jvm.abi",
         ),
         skipCodeGen = CompilerPlugin(
-          skipCodeGenFile.path,
+          skipCodeGenFile.toString(),
           "io.bazel.kotlin.plugin.SkipCodeGen",
         ),
         jdepsGen = CompilerPlugin(
-          jdepsGenFile.path,
+          jdepsGenFile.toString(),
           "io.bazel.kotlin.plugin.jdeps.JDepsGen",
         ),
         kapt3Plugin = CompilerPlugin(
-          kaptFile.path,
+          kaptFile.toString(),
           "org.jetbrains.kotlin.kapt3",
         ),
         kspSymbolProcessingApi = CompilerPlugin(
-          kspSymbolProcessingApi.absolutePath,
+          kspSymbolProcessingApi.toAbsolutePath().toString(),
           "com.google.devtools.ksp.symbol-processing",
         ),
         kspSymbolProcessingCommandLine = CompilerPlugin(
-          kspSymbolProcessingCommandLine.absolutePath,
+          kspSymbolProcessingCommandLine.toAbsolutePath().toString(),
           "com.google.devtools.ksp.symbol-processing",
         ),
       )
@@ -196,7 +139,7 @@ class KotlinToolchain private constructor(
       return try {
         // not system, but platform as parent - we should not include app classpath, only platform (JDK)
         URLClassLoader(
-          baseJars.map { it.toURI().toURL() }.toTypedArray(),
+          baseJars.map { it.toUri().toURL() }.toTypedArray(),
           ClassLoader.getPlatformClassLoader(),
         )
       } catch (e: Exception) {
@@ -205,9 +148,9 @@ class KotlinToolchain private constructor(
     }
   }
 
-  fun toolchainWithReflect(kotlinReflect: File? = null): KotlinToolchain {
+  fun toolchainWithReflect(): KotlinToolchain {
     return KotlinToolchain(
-      baseJars = baseJars + listOf(kotlinReflect ?: KOTLIN_REFLECT.toFile()),
+      baseJars = baseJars + listOf(KOTLIN_REFLECT),
       kapt3Plugin = kapt3Plugin,
       jvmAbiGen = jvmAbiGen,
       skipCodeGen = skipCodeGen,
@@ -231,7 +174,8 @@ class KotlincInvoker(toolchain: KotlinToolchain) {
   init {
     System.setProperty("zip.handler.uses.crc.instead.of.timestamp", "true")
     execMethod = lookup.findStatic(
-      KotlinToolchain.createClassLoader(toolchain).loadClass("io.bazel.kotlin.compiler.BazelK2JVMCompiler"),
+      KotlinToolchain.createClassLoader(toolchain)
+        .loadClass("io.bazel.kotlin.compiler.BazelK2JVMCompiler"),
       "exec",
       MethodType.methodType(Integer.TYPE, PrintStream::class.java, Array<String>::class.java),
     )

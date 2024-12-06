@@ -18,18 +18,11 @@
 
 package io.bazel.kotlin.builder.utils
 
-import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
 
-fun Path.resolveNewDirectories(vararg parts: String): Path? {
+fun resolveNewDirectories(file: Path, vararg parts: String): Path? {
   return Files.createDirectories(
-    parts.fold(this, Path::resolve),
+    parts.fold(file, Path::resolve),
   )
-}
-
-fun verified(file: Path): File {
-  return file
-    .toFile()
-    .also { check(it.exists()) { "file did not exist: $file" } }
 }

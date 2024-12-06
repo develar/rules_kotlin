@@ -19,11 +19,7 @@ package io.bazel.kotlin.builder.tasks
 import io.bazel.kotlin.builder.tasks.jvm.KotlinJvmTaskExecutor
 import io.bazel.kotlin.builder.toolchain.CompilationStatusException
 import io.bazel.kotlin.builder.toolchain.CompilationTaskContext
-import io.bazel.kotlin.builder.utils.ArgMap
-import io.bazel.kotlin.builder.utils.ArgMaps
-import io.bazel.kotlin.builder.utils.Flag
-import io.bazel.kotlin.builder.utils.partitionJvmSources
-import io.bazel.kotlin.builder.utils.resolveNewDirectories
+import io.bazel.kotlin.builder.utils.*
 import io.bazel.kotlin.model.CompilationTaskInfo
 import io.bazel.kotlin.model.JvmCompilationTask
 import io.bazel.kotlin.model.Platform
@@ -34,8 +30,6 @@ import java.nio.file.FileSystems
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.regex.Pattern
-import javax.inject.Inject
-import javax.inject.Singleton
 
 @Suppress("MemberVisibilityCanBePrivate")
 class KotlinBuilder(private val jvmTaskExecutor: KotlinJvmTaskExecutor) {
@@ -209,41 +203,40 @@ class KotlinBuilder(private val jvmTaskExecutor: KotlinJvmTaskExecutor) {
         with(root.directoriesBuilder) {
           val moduleName = argMap.mandatorySingle(KotlinBuilderFlags.MODULE_NAME)
           classes =
-            workingDir.resolveNewDirectories(getOutputDirPath(moduleName, "classes")).toString()
+            resolveNewDirectories(workingDir, getOutputDirPath(moduleName, "classes")).toString()
           javaClasses =
-            workingDir
-              .resolveNewDirectories(
-                getOutputDirPath(moduleName, "java_classes"),
-              ).toString()
+            resolveNewDirectories(
+              workingDir,
+              getOutputDirPath(moduleName, "java_classes"),
+            ).toString()
           if (argMap.hasAll(KotlinBuilderFlags.ABI_JAR)) {
             abiClasses =
-              workingDir
-                .resolveNewDirectories(
-                  getOutputDirPath(moduleName, "abi_classes"),
-                ).toString()
+              resolveNewDirectories(
+                workingDir,
+                getOutputDirPath(moduleName, "abi_classes"),
+              ).toString()
           }
           generatedClasses =
-            workingDir
-              .resolveNewDirectories(getOutputDirPath(moduleName, "generated_classes"))
+            resolveNewDirectories(workingDir, getOutputDirPath(moduleName, "generated_classes"))
               .toString()
           temp =
-            workingDir
-              .resolveNewDirectories(
-                getOutputDirPath(moduleName, "temp"),
-              ).toString()
+            resolveNewDirectories(
+              workingDir,
+              getOutputDirPath(moduleName, "temp"),
+            ).toString()
           generatedSources =
-            workingDir
-              .resolveNewDirectories(getOutputDirPath(moduleName, "generated_sources"))
+            resolveNewDirectories(workingDir, getOutputDirPath(moduleName, "generated_sources"))
               .toString()
           generatedJavaSources =
-            workingDir
-              .resolveNewDirectories(getOutputDirPath(moduleName, "generated_java_sources"))
+            resolveNewDirectories(
+              workingDir,
+              getOutputDirPath(moduleName, "generated_java_sources")
+            )
               .toString()
           generatedStubClasses =
-            workingDir.resolveNewDirectories(getOutputDirPath(moduleName, "stubs")).toString()
+            resolveNewDirectories(workingDir, getOutputDirPath(moduleName, "stubs")).toString()
           coverageMetadataClasses =
-            workingDir
-              .resolveNewDirectories(getOutputDirPath(moduleName, "coverage-metadata"))
+            resolveNewDirectories(workingDir, getOutputDirPath(moduleName, "coverage-metadata"))
               .toString()
         }
 

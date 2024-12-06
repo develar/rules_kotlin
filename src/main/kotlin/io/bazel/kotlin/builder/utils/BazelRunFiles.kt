@@ -16,54 +16,42 @@
 package io.bazel.kotlin.builder.utils
 
 import com.google.devtools.build.runfiles.Runfiles
-import java.io.File
 import java.io.FileNotFoundException
 import java.nio.file.FileSystem
-import kotlin.io.path.exists
+import java.nio.file.Files
+import java.nio.file.Path
+
+private val runfiles by lazy {
+  Runfiles.preload().unmapped()
+}
 
 /** Utility class for getting runfiles on windows and *nix.  */
 object BazelRunFiles {
-  private val runfiles by lazy {
-    Runfiles.preload().unmapped()
-  }
-
   /** Resolve as path in FileSystem. */
   @JvmStatic
   fun resolveVerifiedFromProperty(
     fileSystem: FileSystem,
     key: String,
-  ) = System
-    .getProperty(key)
-    ?.let { path -> runfiles.rlocation(path) }
-    ?.let { fileSystem.getPath(it) }
-    ?.also {
-      if (!it.exists()) {
-        throw IllegalStateException(
-          "$it does not exist in the runfiles!",
-        )
-      }
+  ): Path {
+    val path = System.getProperty(key)
+      ?: throw FileNotFoundException("no reference for $key in ${System.getProperties()}")
+    val file = fileSystem.getPath(runfiles.rlocation(path))
+    require(Files.exists(file)) {
+      "$file does not exist in the runfiles!"
     }
-    ?: let {
-      throw FileNotFoundException("no reference for $key in ${System.getProperties()}")
-    }
+    return file
+  }
+}
 
-  /**
-   * Resolve a run file on windows or *nix.
-   */
-  @JvmStatic
-  fun resolveVerifiedFromProperty(key: String) =
-    System
-      .getProperty(key)
-      ?.let { path -> runfiles.rlocation(path) }
-      ?.let { File(it) }
-      ?.also {
-        if (!it.exists()) {
-          throw IllegalStateException(
-            "$it does not exist in the runfiles!",
-          )
-        }
-      }
-      ?: let {
-        throw FileNotFoundException("no reference for $key in ${System.getProperties()}")
-      }
+/**
+ * Resolve a run file
+ */
+fun resolveVerifiedFromProperty(key: String): Path {
+  val path = (System.getProperty(key)
+    ?: throw FileNotFoundException("no reference for $key in ${System.getProperties()}"))
+  val file = Path.of(runfiles.rlocation(path))
+  require(Files.exists(file)) {
+    "$file does not exist in the runfiles!"
+  }
+  return file
 }

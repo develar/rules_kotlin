@@ -80,7 +80,7 @@ public final class Deps {
                     .label(label)
                     .compileJars(
                             ImmutableList.of(
-                                    BazelRunFiles.resolveVerifiedFromProperty(key).getPath()))
+                                    BazelRunFiles.INSTANCE.resolveVerifiedFromProperty(key).getPath()))
                     .build();
         }
 
