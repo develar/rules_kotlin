@@ -16,12 +16,13 @@
  */
 package io.bazel.kotlin.builder.toolchain
 
-import io.bazel.kotlin.builder.toolchain.KotlinToolchain.Companion.NO_ARGS
 import io.bazel.kotlin.builder.utils.BazelRunFiles
 import io.bazel.kotlin.builder.utils.verified
 import java.io.File
 import java.io.PrintStream
-import java.lang.reflect.Method
+import java.lang.invoke.MethodHandle
+import java.lang.invoke.MethodHandles
+import java.lang.invoke.MethodType
 import java.net.URLClassLoader
 
 class KotlinToolchain private constructor(
@@ -117,8 +118,6 @@ class KotlinToolchain private constructor(
           "@com_github_jetbrains_kotlinx...serialization-json-jvm",
         ).toPath()
     }
-
-    internal val NO_ARGS = arrayOf<Any>()
 
     fun createToolchain(): KotlinToolchain {
       return createToolchain(
@@ -220,21 +219,21 @@ class KotlinToolchain private constructor(
   )
 }
 
+private val lookup = MethodHandles.lookup()
+
 open class KotlinCliToolInvoker internal constructor(
   toolchain: KotlinToolchain,
   clazz: String,
 ) {
-  private val compiler: Any
-  private val execMethod: Method
-  private val getCodeMethod: Method
+  private val execMethod: MethodHandle
 
   init {
-    val compilerClass = toolchain.classLoader.loadClass(clazz)
-    val exitCodeClass = toolchain.classLoader.loadClass("org.jetbrains.kotlin.cli.common.ExitCode")
-
-    compiler = compilerClass.getConstructor().newInstance()
-    execMethod = compilerClass.getMethod("exec", PrintStream::class.java, Array<String>::class.java)
-    getCodeMethod = exitCodeClass.getMethod("getCode")
+    System.setProperty("zip.handler.uses.crc.instead.of.timestamp", "true")
+    execMethod = lookup.findStatic(
+      toolchain.classLoader.loadClass(clazz),
+      "exec",
+      MethodType.methodType(Integer.TYPE, PrintStream::class.java, Array<String>::class.java),
+    )
   }
 
   // Kotlin error codes:
@@ -245,8 +244,7 @@ open class KotlinCliToolInvoker internal constructor(
     args: Array<String>,
     out: PrintStream,
   ): Int {
-    val exitCodeInstance = execMethod.invoke(compiler, out, args)
-    return getCodeMethod.invoke(exitCodeInstance, *NO_ARGS) as Int
+    return execMethod.invokeExact(out, args) as Int
   }
 }
 
