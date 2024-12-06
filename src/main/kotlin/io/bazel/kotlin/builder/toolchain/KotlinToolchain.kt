@@ -121,12 +121,12 @@ class KotlinToolchain private constructor(
 
     fun createToolchain(): KotlinToolchain {
       return createToolchain(
-        KOTLINC.verified().absoluteFile,
-        COMPILER.verified().absoluteFile,
-        JVM_ABI_PLUGIN.verified().absoluteFile,
-        SKIP_CODE_GEN_PLUGIN.verified().absoluteFile,
-        JDEPS_GEN_PLUGIN.verified().absoluteFile,
-        KAPT_PLUGIN.verified().absoluteFile,
+        verified(KOTLINC).absoluteFile,
+        verified(COMPILER).absoluteFile,
+        verified(JVM_ABI_PLUGIN).absoluteFile,
+        verified(SKIP_CODE_GEN_PLUGIN).absoluteFile,
+        verified(JDEPS_GEN_PLUGIN).absoluteFile,
+        verified(KAPT_PLUGIN).absoluteFile,
         KSP_SYMBOL_PROCESSING_API.toFile(),
         KSP_SYMBOL_PROCESSING_CMDLINE.toFile(),
         KOTLINX_SERIALIZATION_CORE_JVM.toFile(),
