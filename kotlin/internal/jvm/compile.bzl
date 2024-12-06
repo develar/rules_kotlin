@@ -396,7 +396,7 @@ def _run_kt_builder_action(
     )
 
     args.add_all(
-        "--processorpath",
+        "--processor_path",
         annotation_processors,
         map_each = _plugin_mappers.kt_plugin_to_processorpath,
         omit_if_empty = True,

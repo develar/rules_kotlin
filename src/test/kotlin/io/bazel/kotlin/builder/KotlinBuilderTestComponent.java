@@ -17,21 +17,12 @@
 
 package io.bazel.kotlin.builder;
 
-import io.bazel.kotlin.builder.tasks.KotlinBuilder;
 import io.bazel.kotlin.builder.tasks.jvm.KotlinJvmTaskExecutor;
-import io.bazel.kotlin.builder.toolchain.KotlinToolchain;
 
 public interface KotlinBuilderTestComponent {
-
-    KotlinBuilder kotlinBuilder();
-
-    KotlinToolchain toolchain();
-
     KotlinJvmTaskExecutor jvmTaskExecutor();
 
     interface Builder {
-        Builder toolchain(KotlinToolchain toolchain);
-
         KotlinBuilderTestComponent build();
     }
 }

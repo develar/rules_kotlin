@@ -3,8 +3,8 @@ package io.bazel.kotlin.builder.tasks.jvm
 import com.google.devtools.build.lib.view.proto.Deps
 import io.bazel.kotlin.builder.utils.Flag
 import io.bazel.kotlin.builder.utils.jars.JarOwner
-import io.bazel.worker.WorkerContext
-import java.io.*
+import io.bazel.worker.TaskContext
+import java.io.BufferedInputStream
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.jar.JarFile
@@ -35,7 +35,7 @@ class JdepsMerger {
     }
 
     fun merge(
-      ctx: WorkerContext.TaskContext,
+      ctx: TaskContext,
       label: String,
       inputs: List<String>,
       output: String,

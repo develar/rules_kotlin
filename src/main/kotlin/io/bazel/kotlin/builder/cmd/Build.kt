@@ -17,7 +17,7 @@
 
 package io.bazel.kotlin.builder.cmd
 
-import io.bazel.kotlin.builder.tasks.KotlinBuilder
+import io.bazel.kotlin.builder.tasks.buildKotlin
 import io.bazel.kotlin.builder.tasks.jvm.InternalCompilerPlugins
 import io.bazel.kotlin.builder.tasks.jvm.KotlinJvmTaskExecutor
 import io.bazel.kotlin.builder.toolchain.KotlinToolchain
@@ -29,22 +29,20 @@ object Build {
   @JvmStatic
   fun main(args: Array<String>) {
     val toolchain = KotlinToolchain.createToolchain()
-    val builder = KotlinBuilder(
-      jvmTaskExecutor = KotlinJvmTaskExecutor(
-        compiler = KotlincInvoker(toolchain.toolchainWithReflect()),
-        plugins = InternalCompilerPlugins(
-          jvmAbiGen = toolchain.jvmAbiGen,
-          skipCodeGen = toolchain.skipCodeGen,
-          jdeps = toolchain.jdepsGen,
-          kspSymbolProcessingApi = toolchain.kspSymbolProcessingApi,
-          kspSymbolProcessingCommandLine = toolchain.kspSymbolProcessingCommandLine,
-        ),
+    val jvmTaskExecutor = KotlinJvmTaskExecutor(
+      compiler = KotlincInvoker(toolchain.toolchainWithReflect()),
+      plugins = InternalCompilerPlugins(
+        jvmAbiGen = toolchain.jvmAbiGen,
+        skipCodeGen = toolchain.skipCodeGen,
+        jdeps = toolchain.jdepsGen,
+        kspSymbolProcessingApi = toolchain.kspSymbolProcessingApi,
+        kspSymbolProcessingCommandLine = toolchain.kspSymbolProcessingCommandLine,
       ),
     )
 
-    val status = Worker.from(args.asList()) {
-      start { ctx, args ->
-        builder.build(ctx, args)
+    val status = Worker.from(args.asList()) { worker ->
+      worker.start { ctx, args ->
+        buildKotlin(ctx, args, jvmTaskExecutor)
       }
     }
     exitProcess(status)

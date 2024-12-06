@@ -17,20 +17,19 @@
 
 package io.bazel.worker
 
-import io.bazel.worker.WorkerContext.TaskContext
-
 /** Worker executes a unit of Work */
 interface Worker {
   companion object {
     inline fun from(
       args: List<String>,
-      then: Worker.(List<String>) -> Int,
+      then: (Worker) -> Int,
     ): Int {
-      val worker = when {
-        "--persistent_worker" in args -> PersistentWorker()
-        else -> InvocationWorker(args)
-      }
-      return worker.then(args.filter { it != "--persistent_worker" })
+      return then(
+        when {
+          "--persistent_worker" in args -> PersistentWorker()
+          else -> InvocationWorker(args)
+        }
+      )
     }
   }
 

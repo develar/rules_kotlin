@@ -105,35 +105,6 @@ class WorkerContext private constructor(
     override fun asPrintStream(): PrintStream = PrintStream(out, true)
   }
 
-  class TaskContext internal constructor(
-    val directory: Path,
-    logging: ScopeLogging,
-  ) : ScopeLogging by logging {
-    /** resultOf a status supplier that includes information collected in the Context. */
-    fun resultOf(executeTaskIn: (TaskContext) -> Int): TaskResult {
-      try {
-        return TaskResult(
-          executeTaskIn(this),
-          contents(),
-        )
-      } catch (t: Throwable) {
-        when (t.causes.lastOrNull()) {
-          is InterruptedException, is InterruptedIOException -> error(t) { "ERROR: Interrupted" }
-          else -> error(t) { "ERROR: unexpected exception" }
-        }
-        return TaskResult(
-          1,
-          contents(),
-        )
-      }
-    }
-
-    private val Throwable.causes
-      get(): Sequence<Throwable> {
-        return cause?.let { c -> sequenceOf(c) + c.causes } ?: emptySequence()
-      }
-  }
-
   /** doTask work in a TaskContext. */
   fun doTask(
     name: String,
@@ -151,4 +122,33 @@ class WorkerContext private constructor(
   override fun close() {
     info { "ending worker context" }
   }
+}
+
+class TaskContext internal constructor(
+  @JvmField val directory: Path,
+  logging: ScopeLogging,
+) : ScopeLogging by logging {
+  /** resultOf a status supplier that includes information collected in the Context. */
+  fun resultOf(executeTaskIn: (TaskContext) -> Int): TaskResult {
+    try {
+      return TaskResult(
+        executeTaskIn(this),
+        contents(),
+      )
+    } catch (t: Throwable) {
+      when (t.causes.lastOrNull()) {
+        is InterruptedException, is InterruptedIOException -> error(t) { "ERROR: Interrupted" }
+        else -> error(t) { "ERROR: unexpected exception" }
+      }
+      return TaskResult(
+        1,
+        contents(),
+      )
+    }
+  }
+
+  private val Throwable.causes
+    get(): Sequence<Throwable> {
+      return cause?.let { c -> sequenceOf(c) + c.causes } ?: emptySequence()
+    }
 }

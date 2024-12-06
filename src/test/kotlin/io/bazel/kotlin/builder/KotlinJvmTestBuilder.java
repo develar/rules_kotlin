@@ -19,7 +19,6 @@ package io.bazel.kotlin.builder;
 import io.bazel.kotlin.builder.Deps.AnnotationProcessor;
 import io.bazel.kotlin.builder.Deps.Dep;
 import io.bazel.kotlin.builder.KotlinJvmTestBuilder.JvmCompilationTaskBuilder.DirectoriesBuilder;
-import io.bazel.kotlin.builder.tasks.KotlinBuilder;
 import io.bazel.kotlin.builder.tasks.jvm.InternalCompilerPlugins;
 import io.bazel.kotlin.builder.tasks.jvm.KotlinJvmTaskExecutor;
 import io.bazel.kotlin.builder.toolchain.CompilationTaskContext;
@@ -71,18 +70,7 @@ public final class KotlinJvmTestBuilder extends KotlinAbstractTestBuilder<JvmCom
           toolchain.kspSymbolProcessingCommandLine
         )
       );
-      KotlinBuilder kotlinBuilder = new KotlinBuilder(executor);
       component = new KotlinBuilderTestComponent() {
-        @Override
-        public KotlinBuilder kotlinBuilder() {
-          return kotlinBuilder;
-        }
-
-        @Override
-        public KotlinToolchain toolchain() {
-          return toolchain;
-        }
-
         @Override
         public KotlinJvmTaskExecutor jvmTaskExecutor() {
           return executor;

@@ -21,8 +21,8 @@ import io.bazel.kotlin.builder.tasks.jvm.JdepsMerger
 import io.bazel.kotlin.builder.tasks.jvm.JdepsMergerFlags
 import io.bazel.kotlin.builder.utils.ArgMap
 import io.bazel.kotlin.builder.utils.createArgMap
+import io.bazel.worker.TaskContext
 import io.bazel.worker.Work
-import io.bazel.worker.WorkerContext
 import java.nio.charset.StandardCharsets
 import java.nio.file.FileSystems
 import java.nio.file.Files
@@ -31,7 +31,7 @@ class MergeJdeps : Work {
   private val FLAGFILE_RE = Regex("""^--flagfile=((.*)-(\d+).params)$""")
 
   override fun invoke(
-    ctx: WorkerContext.TaskContext,
+    ctx: TaskContext,
     args: List<String>,
   ): Int {
     val argMap = getArgs(args)

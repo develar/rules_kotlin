@@ -25,7 +25,7 @@ object MergeJdeps {
   @JvmStatic
   fun main(args: Array<String>) {
     val result = Worker.from(args.toList()) {
-      start(MergeJdeps())
+      it.start(MergeJdeps())
     }
     exitProcess(result)
   }
