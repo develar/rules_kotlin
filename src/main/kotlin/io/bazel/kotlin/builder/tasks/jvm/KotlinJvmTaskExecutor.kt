@@ -17,11 +17,20 @@
 package io.bazel.kotlin.builder.tasks.jvm
 
 import io.bazel.kotlin.builder.toolchain.CompilationTaskContext
+import io.bazel.kotlin.builder.toolchain.CompilerPlugin
 import io.bazel.kotlin.builder.toolchain.KotlincInvoker
 import io.bazel.kotlin.builder.utils.bazelRuleKind
 import io.bazel.kotlin.builder.utils.jars.JarCreator
 import io.bazel.kotlin.model.JvmCompilationTask
 import java.nio.file.Path
+
+class InternalCompilerPlugins(
+  @JvmField val jvmAbiGen: CompilerPlugin,
+  @JvmField val skipCodeGen: CompilerPlugin,
+  @JvmField val jdeps: CompilerPlugin,
+  @JvmField val kspSymbolProcessingApi: CompilerPlugin,
+  @JvmField val kspSymbolProcessingCommandLine: CompilerPlugin,
+)
 
 class KotlinJvmTaskExecutor(
   private val compiler: KotlincInvoker,
