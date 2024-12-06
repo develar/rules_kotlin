@@ -220,7 +220,7 @@ private fun JvmCompilationTask.runKspPlugin(
         context.executeCompilerTask(
           args,
           compiler::compile,
-          printOnSuccess = context.whenTracing { false } != false,
+          printOnSuccess = context.isTracing,
         )
       }.let { outputLines ->
         /*

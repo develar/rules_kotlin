@@ -33,8 +33,7 @@ class CompilationTaskContext(
   private val start = System.currentTimeMillis()
   private var timings: MutableList<String>?
   private var level = -1
-  @PublishedApi
-  internal val isTracing: Boolean
+  @JvmField val isTracing: Boolean
 
   init {
     val debugging = HashSet(info.debugList)
@@ -71,12 +70,8 @@ class CompilationTaskContext(
     out.println()
   }
 
-  inline fun <T> whenTracing(block: CompilationTaskContext.() -> T): T? {
-    return if (isTracing) {
-      block()
-    } else {
-      null
-    }
+  inline fun whenTracing(block: CompilationTaskContext.() -> Unit) {
+    if (isTracing) block() else null
   }
 
   /**
@@ -145,21 +140,7 @@ class CompilationTaskContext(
   fun <T> execute(
     name: String,
     task: () -> T,
-  ): T = execute({ name }, task)
-
-  /**
-   * Runs a task and records the timings.
-   */
-  @Suppress("MemberVisibilityCanBePrivate")
-  fun <T> execute(
-    name: () -> String,
-    task: () -> T,
-  ): T =
-    if (timings == null) {
-      task()
-    } else {
-      pushTimedTask(name(), task)
-    }
+  ): T = if (timings == null) task() else pushTimedTask(name, task)
 
   private inline fun <T> pushTimedTask(
     name: String,
@@ -168,14 +149,13 @@ class CompilationTaskContext(
     level += 1
     val previousTimings = timings
     timings = mutableListOf()
-    return try {
-      System.currentTimeMillis().let { start ->
-        task().also {
-          val stop = System.currentTimeMillis()
-          previousTimings!! += "${"  ".repeat(level)} * $name: ${stop - start} ms"
-          previousTimings.addAll(timings!!)
-        }
-      }
+    try {
+      val start = System.currentTimeMillis()
+      val result = task()
+      val stop = System.currentTimeMillis()
+      previousTimings!!.add("${"  ".repeat(level)} * $name: ${stop - start} ms")
+      previousTimings.addAll(timings!!)
+      return result
     } finally {
       level -= 1
       timings = previousTimings
