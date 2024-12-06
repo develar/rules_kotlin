@@ -216,12 +216,12 @@ class KotlinToolchain private constructor(
       kspSymbolProcessingCommandLine = kspSymbolProcessingCommandLine,
     )
   }
-
-  data class CompilerPlugin(
-    @JvmField val jarPath: String,
-    @JvmField val id: String,
-  )
 }
+
+data class CompilerPlugin(
+  @JvmField val jarPath: String,
+  @JvmField val id: String,
+)
 
 private val lookup = MethodHandles.lookup()
 

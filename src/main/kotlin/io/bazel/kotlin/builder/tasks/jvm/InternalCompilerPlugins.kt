@@ -17,13 +17,13 @@
 
 package io.bazel.kotlin.builder.tasks.jvm
 
-import io.bazel.kotlin.builder.toolchain.KotlinToolchain
+import io.bazel.kotlin.builder.toolchain.CompilerPlugin
 
-class InternalCompilerPlugins constructor(
-  val jvmAbiGen: KotlinToolchain.CompilerPlugin,
-  val skipCodeGen: KotlinToolchain.CompilerPlugin,
-  val kapt: KotlinToolchain.CompilerPlugin,
-  val jdeps: KotlinToolchain.CompilerPlugin,
-  val kspSymbolProcessingApi: KotlinToolchain.CompilerPlugin,
-  val kspSymbolProcessingCommandLine: KotlinToolchain.CompilerPlugin,
+class InternalCompilerPlugins(
+  @JvmField val jvmAbiGen: CompilerPlugin,
+  @JvmField val skipCodeGen: CompilerPlugin,
+  @JvmField val kapt: CompilerPlugin,
+  @JvmField val jdeps: CompilerPlugin,
+  @JvmField val kspSymbolProcessingApi: CompilerPlugin,
+  @JvmField val kspSymbolProcessingCommandLine: CompilerPlugin,
 )

@@ -17,13 +17,13 @@
 
 package io.bazel.kotlin.builder.tasks.jvm
 
-import io.bazel.kotlin.builder.toolchain.KotlinToolchain
+import io.bazel.kotlin.builder.toolchain.CompilerPlugin
 import java.io.ByteArrayOutputStream
 import java.io.ObjectOutputStream
 import java.nio.file.FileSystem
 import java.nio.file.FileSystems
 import java.nio.file.Path
-import java.util.Base64
+import java.util.*
 
 /**
  * CompilationArgs collects the arguments for executing the Kotlin compiler.
@@ -58,10 +58,10 @@ class CompilationArgs(
     ): SetFlag
   }
 
-  fun plugin(p: KotlinToolchain.CompilerPlugin): CompilationArgs = plugin(p) {}
+  fun plugin(p: CompilerPlugin): CompilationArgs = plugin(p) {}
 
   fun plugin(
-    p: KotlinToolchain.CompilerPlugin,
+    p: CompilerPlugin,
     flagArgs: SetFlag.() -> Unit,
   ): CompilationArgs {
     value("-Xplugin=${p.jarPath}")
