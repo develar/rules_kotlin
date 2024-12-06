@@ -117,37 +117,40 @@ class KotlinBuilder(private val jvmTaskExecutor: KotlinJvmTaskExecutor) {
       return Pair(argMap, context)
     }
 
-    private fun buildTaskInfo(argMap: ArgMap): CompilationTaskInfo.Builder =
-      with(CompilationTaskInfo.newBuilder()) {
-        addAllDebug(argMap.mandatory(KotlinBuilderFlags.DEBUG))
+    private fun buildTaskInfo(argMap: ArgMap): CompilationTaskInfo.Builder {
+      val builder = CompilationTaskInfo.newBuilder()
+      builder.addAllDebug(argMap.mandatory(KotlinBuilderFlags.DEBUG))
 
-        label = argMap.mandatorySingle(KotlinBuilderFlags.TARGET_LABEL)
-        argMap.mandatorySingle(KotlinBuilderFlags.RULE_KIND).split("_").also {
-          check(it.size == 3 && it[0] == "kt") { "invalid rule kind $it" }
-          platform =
-            checkNotNull(Platform.valueOf(it[1].uppercase())) {
-              "unrecognized platform ${it[1]}"
-            }
-          ruleKind =
-            checkNotNull(RuleKind.valueOf(it[2].uppercase())) {
-              "unrecognized rule kind ${it[2]}"
-            }
-        }
-        moduleName =
-          argMap.mandatorySingle(KotlinBuilderFlags.MODULE_NAME).also {
-            check(it.isNotBlank()) { "--kotlin_module_name should not be blank" }
+      builder.label = argMap.mandatorySingle(KotlinBuilderFlags.TARGET_LABEL)
+      argMap.mandatorySingle(KotlinBuilderFlags.RULE_KIND).split("_").also {
+        check(it.size == 3 && it[0] == "kt") { "invalid rule kind $it" }
+        builder.platform =
+          checkNotNull(Platform.valueOf(it[1].uppercase())) {
+            "unrecognized platform ${it[1]}"
           }
-        addAllPassthroughFlags(argMap.optional(KotlinBuilderFlags.PASSTHROUGH_FLAGS) ?: emptyList())
-
-        argMap.optional(KotlinBuilderFlags.FRIEND_PATHS)?.let(::addAllFriendPaths)
-        toolchainInfoBuilder.commonBuilder.apiVersion =
-          argMap.mandatorySingle(KotlinBuilderFlags.API_VERSION)
-        toolchainInfoBuilder.commonBuilder.languageVersion =
-          argMap.mandatorySingle(KotlinBuilderFlags.LANGUAGE_VERSION)
-        strictKotlinDeps = argMap.mandatorySingle(KotlinBuilderFlags.STRICT_KOTLIN_DEPS)
-        reducedClasspathMode = argMap.mandatorySingle(KotlinBuilderFlags.REDUCED_CLASSPATH_MODE)
-        this
+        builder.ruleKind =
+          checkNotNull(RuleKind.valueOf(it[2].uppercase())) {
+            "unrecognized rule kind ${it[2]}"
+          }
       }
+      builder.moduleName =
+        argMap.mandatorySingle(KotlinBuilderFlags.MODULE_NAME).also {
+          check(it.isNotBlank()) { "--kotlin_module_name should not be blank" }
+        }
+      builder.addAllPassthroughFlags(
+        argMap.optional(KotlinBuilderFlags.PASSTHROUGH_FLAGS) ?: emptyList(),
+      )
+
+      argMap.optional(KotlinBuilderFlags.FRIEND_PATHS)?.let(builder::addAllFriendPaths)
+      builder.toolchainInfoBuilder.commonBuilder.apiVersion =
+        argMap.mandatorySingle(KotlinBuilderFlags.API_VERSION)
+      builder.toolchainInfoBuilder.commonBuilder.languageVersion =
+        argMap.mandatorySingle(KotlinBuilderFlags.LANGUAGE_VERSION)
+      builder.strictKotlinDeps = argMap.mandatorySingle(KotlinBuilderFlags.STRICT_KOTLIN_DEPS)
+      builder.reducedClasspathMode =
+        argMap.mandatorySingle(KotlinBuilderFlags.REDUCED_CLASSPATH_MODE)
+      return builder
+    }
 
     private fun executeJvmTask(
       context: CompilationTaskContext,
