@@ -451,11 +451,7 @@ fun compileKotlin(
   context.whenTracing {
     context.printLines("compileKotlin arguments:\n", argList.asSequence())
   }
-  val task = context.executeCompilerTask(
-    args = argList,
-    compile = compiler::compile,
-    printOnFail = printOnFail,
-  )
+  val task = context.executeCompilerTask(args = argList, compile = compiler::compile, printOnFail = printOnFail)
   context.whenTracing {
     printLines(
       "kotlinc Files Created:",

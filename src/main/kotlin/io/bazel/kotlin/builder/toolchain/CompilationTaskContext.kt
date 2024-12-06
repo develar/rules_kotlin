@@ -23,17 +23,12 @@ import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.PrintStream
-import java.nio.file.FileSystems
+import java.nio.file.Path
 
 class CompilationTaskContext(
   val info: CompilationTaskInfo,
   private val out: PrintStream,
-  private val executionRoot: String =
-    FileSystems
-      .getDefault()
-      .getPath("")
-      .toAbsolutePath()
-      .toString() + File.separator,
+  private val executionRoot: String = Path.of("").toAbsolutePath().toString() + File.separator,
 ) {
   private val start = System.currentTimeMillis()
   private var timings: MutableList<String>?
@@ -42,7 +37,7 @@ class CompilationTaskContext(
   internal val isTracing: Boolean
 
   init {
-    val debugging = info.debugList.toSet()
+    val debugging = HashSet(info.debugList)
     timings = if (debugging.contains("timings")) mutableListOf() else null
     isTracing = debugging.contains("trace")
   }
@@ -91,7 +86,7 @@ class CompilationTaskContext(
     header: String,
     msg: MessageOrBuilder,
   ) {
-    printLines(header, TextFormat.printer().printToString(msg).splitToSequence('\n'), filterEmpty = true)
+    printLines(header = header, lines = TextFormat.printer().printToString(msg).splitToSequence('\n'), filterEmpty = true)
   }
 
   /**
