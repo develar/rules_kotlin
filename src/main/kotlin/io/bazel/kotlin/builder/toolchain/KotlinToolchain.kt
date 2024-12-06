@@ -26,7 +26,6 @@ import java.nio.file.Path
 
 class KotlinToolchain private constructor(
   internal val baseJars: List<Path>,
-  @JvmField val kapt3Plugin: CompilerPlugin,
   @JvmField val jvmAbiGen: CompilerPlugin,
   @JvmField val skipCodeGen: CompilerPlugin,
   @JvmField val jdepsGen: CompilerPlugin,
@@ -34,10 +33,6 @@ class KotlinToolchain private constructor(
   @JvmField val kspSymbolProcessingCommandLine: CompilerPlugin,
 ) {
   companion object {
-    private val KAPT_PLUGIN by lazy {
-      resolveVerifiedFromProperty("@com_github_jetbrains_kotlin...kapt")
-    }
-
     private val COMPILER by lazy {
       resolveVerifiedFromProperty("@rules_kotlin...compiler")
     }
@@ -69,7 +64,6 @@ class KotlinToolchain private constructor(
         jvmAbiGenFile = resolveVerifiedFromProperty("@com_github_jetbrains_kotlin...jvm-abi-gen"),
         skipCodeGenFile = SKIP_CODE_GEN_PLUGIN,
         jdepsGenFile = JDEPS_GEN_PLUGIN,
-        kaptFile = KAPT_PLUGIN,
         kspSymbolProcessingApi = KSP_SYMBOL_PROCESSING_API,
         kspSymbolProcessingCommandLine = KSP_SYMBOL_PROCESSING_CMDLINE,
         kotlinxSerializationCoreJvm = resolveVerifiedFromProperty("@com_github_jetbrains_kotlinx...serialization-core-jvm"),
@@ -84,7 +78,6 @@ class KotlinToolchain private constructor(
       jvmAbiGenFile: Path,
       skipCodeGenFile: Path,
       jdepsGenFile: Path,
-      kaptFile: Path,
       kspSymbolProcessingApi: Path,
       kspSymbolProcessingCommandLine: Path,
       kotlinxSerializationCoreJvm: Path,
@@ -119,10 +112,6 @@ class KotlinToolchain private constructor(
           jdepsGenFile.toString(),
           "io.bazel.kotlin.plugin.jdeps.JDepsGen",
         ),
-        kapt3Plugin = CompilerPlugin(
-          kaptFile.toString(),
-          "org.jetbrains.kotlin.kapt3",
-        ),
         kspSymbolProcessingApi = CompilerPlugin(
           kspSymbolProcessingApi.toAbsolutePath().toString(),
           "com.google.devtools.ksp.symbol-processing",
@@ -138,7 +127,6 @@ class KotlinToolchain private constructor(
   fun toolchainWithReflect(): KotlinToolchain {
     return KotlinToolchain(
       baseJars = baseJars + listOf(KOTLIN_REFLECT),
-      kapt3Plugin = kapt3Plugin,
       jvmAbiGen = jvmAbiGen,
       skipCodeGen = skipCodeGen,
       jdepsGen = jdepsGen,

@@ -22,7 +22,6 @@ import io.bazel.kotlin.builder.toolchain.CompilerPlugin
 class InternalCompilerPlugins(
   @JvmField val jvmAbiGen: CompilerPlugin,
   @JvmField val skipCodeGen: CompilerPlugin,
-  @JvmField val kapt: CompilerPlugin,
   @JvmField val jdeps: CompilerPlugin,
   @JvmField val kspSymbolProcessingApi: CompilerPlugin,
   @JvmField val kspSymbolProcessingCommandLine: CompilerPlugin,

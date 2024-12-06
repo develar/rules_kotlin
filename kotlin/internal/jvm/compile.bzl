@@ -310,52 +310,6 @@ def _run_merge_jdeps_action(ctx, toolchain, jdeps, output, deps):
             progress_message = progress_message,
         )
 
-def _run_kapt_builder_actions(
-        ctx,
-        rule_kind,
-        toolchains,
-        srcs,
-        associates,
-        compile_deps,
-        deps_artifacts,
-        annotation_processors,
-        transitive_runtime_jars,
-        plugins):
-    """Runs KAPT using the KotlinBuilder tool
-    Returns:
-        A struct containing KAPT outputs
-    """
-    ap_generated_src_jar = ctx.actions.declare_file(ctx.label.name + "-kapt-gensrc.jar")
-    kapt_generated_stub_jar = ctx.actions.declare_file(ctx.label.name + "-kapt-generated-stub.jar")
-    kapt_generated_class_jar = ctx.actions.declare_file(ctx.label.name + "-kapt-generated-class.jar")
-
-    _run_kt_builder_action(
-        ctx = ctx,
-        rule_kind = rule_kind,
-        toolchains = toolchains,
-        srcs = srcs,
-        generated_src_jars = [],
-        associates = associates,
-        compile_deps = compile_deps,
-        deps_artifacts = deps_artifacts,
-        annotation_processors = annotation_processors,
-        transitive_runtime_jars = transitive_runtime_jars,
-        plugins = plugins,
-        outputs = {
-            "generated_java_srcjar": ap_generated_src_jar,
-            "kapt_generated_stub_jar": kapt_generated_stub_jar,
-            "kapt_generated_class_jar": kapt_generated_class_jar,
-        },
-        build_kotlin = False,
-        mnemonic = "KotlinKapt",
-    )
-
-    return struct(
-        ap_generated_src_jar = ap_generated_src_jar,
-        kapt_generated_stub_jar = kapt_generated_stub_jar,
-        kapt_generated_class_jar = kapt_generated_class_jar,
-    )
-
 def _run_ksp_builder_actions(
         ctx,
         rule_kind,
@@ -556,7 +510,6 @@ def kt_jvm_produce_jar_actions(ctx, rule_kind):
         rule_kind = rule_kind,
         toolchains = toolchains,
         srcs = srcs,
-        generated_kapt_src_jars = [],
         generated_ksp_src_jars = [],
         associates = associates,
         compile_deps = compile_deps,
@@ -667,9 +620,9 @@ def _get_or_create_single_jdeps_output(toolchain, java_infos, ctx, compile_deps)
             output = output_jdeps,
         )
 
-def _compile_java_sources(ctx, srcs, generated_kapt_src_jars, generated_ksp_src_jars, compile_deps, kt_stubs_for_java, toolchains, strict_deps):
+def _compile_java_sources(ctx, srcs, generated_ksp_src_jars, compile_deps, kt_stubs_for_java, toolchains, strict_deps):
     """Compiles Java sources if present, otherwise uses KT ABI jar."""
-    has_java_sources = srcs.java or generated_kapt_src_jars or srcs.src_jars or (generated_ksp_src_jars and is_ksp_processor_generating_java(ctx.attr.plugins))
+    has_java_sources = srcs.java or srcs.src_jars or (generated_ksp_src_jars and is_ksp_processor_generating_java(ctx.attr.plugins))
 
     if not has_java_sources:
         # no sources to compile, return early
@@ -686,7 +639,7 @@ def _compile_java_sources(ctx, srcs, generated_kapt_src_jars, generated_ksp_src_
     java_info = java_common.compile(
         ctx,
         source_files = srcs.java,
-        source_jars = generated_kapt_src_jars + srcs.src_jars + generated_ksp_src_jars,
+        source_jars = srcs.src_jars + generated_ksp_src_jars,
         output = ctx.actions.declare_file(ctx.label.name + "-java.jar"),
         deps = compile_deps.deps + kt_stubs_for_java,
         java_toolchain = toolchains.java,
@@ -703,7 +656,6 @@ def _run_kt_java_builder_actions(
         rule_kind,
         toolchains,
         srcs,
-        generated_kapt_src_jars,
         generated_ksp_src_jars,
         associates,
         compile_deps,
@@ -722,30 +674,6 @@ def _run_kt_java_builder_actions(
     output_jars = []
     kt_stubs_for_java = []
     has_kt_sources = srcs.kt or srcs.src_jars
-
-    # run KAPT
-    if has_kt_sources and annotation_processors:
-        kapt_outputs = _run_kapt_builder_actions(
-            ctx,
-            rule_kind = rule_kind,
-            toolchains = toolchains,
-            srcs = srcs,
-            associates = associates,
-            compile_deps = compile_deps,
-            deps_artifacts = deps_artifacts,
-            annotation_processors = annotation_processors,
-            transitive_runtime_jars = transitive_runtime_jars,
-            plugins = plugins,
-        )
-        generated_kapt_src_jars.append(kapt_outputs.ap_generated_src_jar)
-        output_jars.append(kapt_outputs.kapt_generated_class_jar)
-        kt_stubs_for_java.append(
-            JavaInfo(
-                compile_jar = kapt_outputs.kapt_generated_stub_jar,
-                output_jar = kapt_outputs.kapt_generated_stub_jar,
-                neverlink = True,
-            ),
-        )
 
     # run KSP
     if has_kt_sources and ksp_annotation_processors:
@@ -794,7 +722,7 @@ def _run_kt_java_builder_actions(
             rule_kind = rule_kind,
             toolchains = toolchains,
             srcs = srcs,
-            generated_src_jars = generated_kapt_src_jars + generated_ksp_src_jars,
+            generated_src_jars = generated_ksp_src_jars,
             associates = associates,
             compile_deps = compile_deps,
             deps_artifacts = deps_artifacts,
@@ -825,7 +753,6 @@ def _run_kt_java_builder_actions(
     java_part_java_info = _compile_java_sources(
         ctx = ctx,
         srcs = srcs,
-        generated_kapt_src_jars = generated_kapt_src_jars,
         generated_ksp_src_jars = generated_ksp_src_jars,
         compile_deps = compile_deps,
         kt_stubs_for_java = kt_stubs_for_java,
@@ -861,7 +788,7 @@ def _run_kt_java_builder_actions(
 
     return struct(
         output_jars = output_jars,
-        generated_src_jars = generated_kapt_src_jars + generated_ksp_src_jars,
+        generated_src_jars = generated_ksp_src_jars,
         annotation_processing = annotation_processing,
         output_jdeps = _get_or_create_single_jdeps_output(toolchain, java_infos, ctx, compile_deps),
     )

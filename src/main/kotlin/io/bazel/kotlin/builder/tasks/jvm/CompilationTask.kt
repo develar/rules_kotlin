@@ -30,13 +30,10 @@ import io.bazel.kotlin.builder.utils.partitionJvmSources
 import io.bazel.kotlin.model.JvmCompilationTask
 import io.bazel.kotlin.model.JvmCompilationTask.Directories
 import java.io.BufferedInputStream
-import java.io.ByteArrayOutputStream
 import java.io.File
-import java.io.ObjectOutputStream
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
-import java.util.*
 import java.util.stream.Collectors
 import java.util.stream.Stream
 
@@ -139,54 +136,6 @@ internal fun preProcessingSteps(
   }
 }
 
-internal fun encodeMap(options: Map<String, String>): String {
-  val os = ByteArrayOutputStream()
-  val oos = ObjectOutputStream(os)
-
-  oos.writeInt(options.size)
-  for ((key, value) in options.entries) {
-    oos.writeUTF(key)
-    oos.writeUTF(value)
-  }
-
-  oos.flush()
-  return Base64
-    .getEncoder()
-    .encodeToString(os.toByteArray())
-}
-
-internal fun JvmCompilationTask.kaptArgs(
-  context: CompilationTaskContext,
-  plugins: InternalCompilerPlugins,
-  aptMode: String,
-): CompilationArgs {
-  val javacArgs = mapOf<String, String>(
-    "-target" to info.toolchainInfo.jvm.jvmTarget,
-    "-source" to info.toolchainInfo.jvm.jvmTarget,
-  )
-  val compilationArgs = CompilationArgs()
-  compilationArgs.xFlag("plugin", plugins.kapt.jarPath)
-
-  val values = arrayOf(
-    "sources" to listOf(directories.generatedJavaSources),
-    "classes" to listOf(directories.generatedClasses),
-    "stubs" to listOf(directories.stubs),
-    "incrementalData" to listOf(directories.incrementalData),
-    "javacArguments" to listOf(javacArgs.let(::encodeMap)),
-    "correctErrorTypes" to listOf("false"),
-    "verbose" to listOf(context.whenTracing { "true" } ?: "false"),
-    "apclasspath" to inputs.processorpathsList,
-    "aptMode" to listOf(aptMode),
-  )
-  compilationArgs.repeatFlag(
-    "-P",
-    *values + ("processors" to inputs.processorsList),
-  ) { option, value ->
-    "plugin:${plugins.kapt.id}:$option=$value"
-  }
-  return compilationArgs
-}
-
 internal fun JvmCompilationTask.kspArgs(plugins: InternalCompilerPlugins): CompilationArgs =
   CompilationArgs().apply {
     plugin(plugins.kspSymbolProcessingCommandLine)
@@ -237,58 +186,13 @@ internal fun JvmCompilationTask.runPlugins(
   plugins: InternalCompilerPlugins,
   compiler: KotlincInvoker,
 ): JvmCompilationTask {
-  if (
-    (
-      inputs.processorsList.isEmpty() &&
-        inputs.stubsPluginClasspathList.isEmpty()
-    ) ||
-    inputs.kotlinSourcesList.isEmpty()
-  ) {
+  if ((inputs.processorsList.isEmpty() && inputs.stubsPluginClasspathList.isEmpty()) ||
+    inputs.kotlinSourcesList.isEmpty()) {
     return this
-  } else {
-    if (!outputs.generatedKspSrcJar.isNullOrEmpty()) {
-      return runKspPlugin(context, plugins, compiler)
-    } else if (!outputs.generatedClassJar.isNullOrEmpty()) {
-      return runKaptPlugin(context, plugins, compiler)
-    } else {
-      return this
-    }
   }
-}
-
-private fun JvmCompilationTask.runKaptPlugin(
-  context: CompilationTaskContext,
-  plugins: InternalCompilerPlugins,
-  compiler: KotlincInvoker,
-): JvmCompilationTask {
-  return context.execute("kapt (${inputs.processorsList.joinToString(", ")})") {
-    baseArgs()
-      .plus(
-        plugins(
-          compilationTask = this,
-          options = inputs.stubsPluginOptionsList,
-          classpath = inputs.stubsPluginClasspathList,
-        ),
-      ).plus(
-        kaptArgs(context, plugins, "stubsAndApt"),
-      ).flag("-d", directories.generatedClasses)
-      .values(inputs.kotlinSourcesList)
-      .values(inputs.javaSourcesList)
-      .list()
-      .let { args ->
-        context.executeCompilerTask(
-          args,
-          compiler::compile,
-          printOnSuccess = context.whenTracing { false } != false,
-        )
-      }.let { outputLines ->
-        // if tracing is enabled, the output should be formatted in a special way, if we aren't
-        // tracing then any compiler output would make it's way to the console as is.
-        context.whenTracing {
-          printLines("kapt output", outputLines.asSequence())
-        }
-        return@let expandWithGeneratedSources()
-      }
+  return when {
+    !outputs.generatedKspSrcJar.isNullOrEmpty() -> runKspPlugin(context, plugins, compiler)
+    else -> this
   }
 }
 

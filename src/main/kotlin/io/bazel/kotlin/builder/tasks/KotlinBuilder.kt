@@ -60,15 +60,11 @@ class KotlinBuilder(private val jvmTaskExecutor: KotlinJvmTaskExecutor) {
         LANGUAGE_VERSION("--kotlin_language_version"),
         JVM_TARGET("--kotlin_jvm_target"),
         OUTPUT_SRCJAR("--kotlin_output_srcjar"),
-        GENERATED_CLASSDIR("--kotlin_generated_classdir"),
         FRIEND_PATHS("--kotlin_friend_paths"),
         OUTPUT_JDEPS("--kotlin_output_jdeps"),
         DEBUG("--kotlin_debug_tags"),
-        TASK_ID("--kotlin_task_id"),
         ABI_JAR("--abi_jar"),
         GENERATED_JAVA_SRC_JAR("--generated_java_srcjar"),
-        GENERATED_JAVA_STUB_JAR("--kapt_generated_stub_jar"),
-        GENERATED_CLASS_JAR("--kapt_generated_class_jar"),
         BUILD_KOTLIN("--build_kotlin"),
         STRICT_KOTLIN_DEPS("--strict_kotlin_deps"),
         REDUCED_CLASSPATH_MODE("--reduced_classpath_mode"),
@@ -188,13 +184,7 @@ class KotlinBuilder(private val jvmTaskExecutor: KotlinJvmTaskExecutor) {
           argMap.optionalSingle(KotlinBuilderFlags.GENERATED_JAVA_SRC_JAR)?.apply {
             generatedJavaSrcJar = this
           }
-          argMap.optionalSingle(KotlinBuilderFlags.GENERATED_JAVA_STUB_JAR)?.apply {
-            generatedJavaStubJar = this
-          }
           argMap.optionalSingle(KotlinBuilderFlags.ABI_JAR)?.let { abijar = it }
-          argMap.optionalSingle(KotlinBuilderFlags.GENERATED_CLASS_JAR)?.let {
-            generatedClassJar = it
-          }
           argMap.optionalSingle(KotlinBuilderFlags.KSP_GENERATED_JAVA_SRCJAR)?.let {
             generatedKspSrcJar = it
           }

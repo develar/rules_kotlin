@@ -35,7 +35,6 @@ object Build {
         plugins = InternalCompilerPlugins(
           jvmAbiGen = toolchain.jvmAbiGen,
           skipCodeGen = toolchain.skipCodeGen,
-          kapt = toolchain.kapt3Plugin,
           jdeps = toolchain.jdepsGen,
           kspSymbolProcessingApi = toolchain.kspSymbolProcessingApi,
           kspSymbolProcessingCommandLine = toolchain.kspSymbolProcessingCommandLine,

@@ -104,16 +104,16 @@ public final class KotlinJvmTestBuilder extends KotlinAbstractTestBuilder<JvmCom
         new InternalCompilerPlugins(
           toolchain.jvmAbiGen,
           toolchain.skipCodeGen,
-          toolchain.kapt3Plugin,
           toolchain.jdepsGen,
           toolchain.kspSymbolProcessingApi,
           toolchain.kspSymbolProcessingCommandLine
         )
       );
+      KotlinBuilder kotlinBuilder = new KotlinBuilder(executor);
           component = new KotlinBuilderTestComponent() {
               @Override
               public KotlinBuilder kotlinBuilder() {
-                return null;
+                return kotlinBuilder;
               }
 
               @Override
@@ -123,7 +123,7 @@ public final class KotlinJvmTestBuilder extends KotlinAbstractTestBuilder<JvmCom
 
               @Override
               public KotlinJvmTaskExecutor jvmTaskExecutor() {
-                return null;
+                return executor;
               }
             };
         }

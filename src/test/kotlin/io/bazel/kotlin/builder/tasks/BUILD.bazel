@@ -91,15 +91,6 @@ filegroup(
 )
 
 kt_rules_test(
-    name = "KotlinBuilderJvmKaptTest",
-    srcs = ["jvm/KotlinBuilderJvmKaptTest.java"],
-    data = [
-        "auto_value",
-        "auto_value_annotations",
-    ],
-)
-
-kt_rules_test(
     name = "KotlinJvmTaskExecutorTest",
     srcs = ["jvm/KotlinJvmTaskExecutorTest.kt"],
     deps = [
@@ -118,7 +109,6 @@ test_suite(
         ":KotlinBuilderJvmBasicTest",
         ":KotlinBuilderJvmCoverageTest",
         ":KotlinBuilderJvmJdepsTest",
-        ":KotlinBuilderJvmKaptTest",
         ":KotlinBuilderJvmStrictDepsTest",
         ":KotlinJvmTaskExecutorTest",
     ],
