@@ -17,8 +17,6 @@
 
 package io.bazel.kotlin.builder.utils
 
-import java.io.File
-
 class ArgMap(
   private val map: Map<String, List<String>>,
 ) {
@@ -85,8 +83,6 @@ class ArgMap(
   fun mandatory(key: Flag) = mandatory(key.flag)
 
   fun optional(key: Flag) = optional(key.flag)
-
-  fun labelDepMap(key: Flag) = labelDepMap(key.flag)
 }
 
 interface Flag {
@@ -94,25 +90,13 @@ interface Flag {
 }
 
 object ArgMaps {
-  @JvmStatic
-  fun from(args: List<String>): ArgMap =
-    mutableMapOf<String, MutableList<String>>()
-      .also { argsToMap(args, it) }
-      .let(::ArgMap)
-
-  @JvmStatic
-  fun from(file: File): ArgMap = from(file.reader().readLines())
-
-  private fun argsToMap(
-    args: List<String>,
-    argMap: MutableMap<String, MutableList<String>>,
-    isFlag: (String) -> Boolean = { it.startsWith("--") },
-  ) {
+  fun from(args: List<String>): ArgMap {
+    val result = LinkedHashMap<String, MutableList<String>>()
     var currentKey: String =
-      args.first().also { require(isFlag(it)) { "first arg must be a flag" } }
+      args.first().also { require(it.startsWith("--")) { "first arg must be a flag" } }
     val currentValue = mutableListOf<String>()
     val mergeCurrent = {
-      argMap.computeIfAbsent(currentKey) { mutableListOf() }.addAll(currentValue)
+      result.computeIfAbsent(currentKey) { mutableListOf() }.addAll(currentValue)
       currentValue.clear()
     }
     args
@@ -125,5 +109,6 @@ object ArgMaps {
           currentValue.add(it)
         }
       }.also { mergeCurrent() }
+    return ArgMap(result)
   }
 }

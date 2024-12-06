@@ -19,7 +19,10 @@ package io.bazel.kotlin.builder.tasks
 import io.bazel.kotlin.builder.tasks.jvm.KotlinJvmTaskExecutor
 import io.bazel.kotlin.builder.toolchain.CompilationStatusException
 import io.bazel.kotlin.builder.toolchain.CompilationTaskContext
-import io.bazel.kotlin.builder.utils.*
+import io.bazel.kotlin.builder.utils.ArgMap
+import io.bazel.kotlin.builder.utils.ArgMaps
+import io.bazel.kotlin.builder.utils.Flag
+import io.bazel.kotlin.builder.utils.partitionJvmSources
 import io.bazel.kotlin.model.CompilationTaskInfo
 import io.bazel.kotlin.model.JvmCompilationTask
 import io.bazel.kotlin.model.Platform
@@ -80,7 +83,13 @@ class KotlinBuilder(private val jvmTaskExecutor: KotlinJvmTaskExecutor) {
     try {
       @Suppress("WHEN_ENUM_CAN_BE_NULL_IN_JAVA")
       when (compileContext.info.platform) {
-        Platform.JVM -> executeJvmTask(compileContext, taskContext.directory, argMap, jvmTaskExecutor)
+        Platform.JVM -> executeJvmTask(
+          compileContext,
+          taskContext.directory,
+          argMap,
+          jvmTaskExecutor,
+        )
+
         Platform.UNRECOGNIZED -> throw IllegalStateException(
           "unrecognized platform: ${compileContext.info}",
         )
@@ -110,8 +119,7 @@ private fun buildContext(
 
   val argMap = ArgMaps.from(lines)
   val info = buildTaskInfo(argMap).build()
-  val context =
-    CompilationTaskContext(info, ctx.asPrintStream())
+  val context = CompilationTaskContext(info, ctx.asPrintStream())
   return Pair(argMap, context)
 }
 
@@ -191,42 +199,17 @@ private fun buildJvmTask(
 
   with(root.directoriesBuilder) {
     val moduleName = argMap.mandatorySingle(KotlinBuilderFlags.MODULE_NAME)
-    classes =
-      resolveNewDirectories(workingDir, getOutputDirPath(moduleName, "classes")).toString()
-    javaClasses =
-      resolveNewDirectories(
-        workingDir,
-        getOutputDirPath(moduleName, "java_classes"),
-      ).toString()
+    classes = resolveNewDirectories(workingDir, getOutputDirPath(moduleName, "classes"))
+    javaClasses = resolveNewDirectories(workingDir, getOutputDirPath(moduleName, "java_classes"))
     if (argMap.hasAll(KotlinBuilderFlags.ABI_JAR)) {
-      abiClasses =
-        resolveNewDirectories(
-          workingDir,
-          getOutputDirPath(moduleName, "abi_classes"),
-        ).toString()
+      abiClasses = resolveNewDirectories(workingDir, getOutputDirPath(moduleName, "abi_classes"))
     }
-    generatedClasses =
-      resolveNewDirectories(workingDir, getOutputDirPath(moduleName, "generated_classes"))
-        .toString()
-    temp =
-      resolveNewDirectories(
-        workingDir,
-        getOutputDirPath(moduleName, "temp"),
-      ).toString()
-    generatedSources =
-      resolveNewDirectories(workingDir, getOutputDirPath(moduleName, "generated_sources"))
-        .toString()
-    generatedJavaSources =
-      resolveNewDirectories(
-        workingDir,
-        getOutputDirPath(moduleName, "generated_java_sources"),
-      )
-        .toString()
-    generatedStubClasses =
-      resolveNewDirectories(workingDir, getOutputDirPath(moduleName, "stubs")).toString()
-    coverageMetadataClasses =
-      resolveNewDirectories(workingDir, getOutputDirPath(moduleName, "coverage-metadata"))
-        .toString()
+    generatedClasses = resolveNewDirectories(workingDir, getOutputDirPath(moduleName, "generated_classes"))
+    temp = resolveNewDirectories(workingDir, getOutputDirPath(moduleName, "temp"))
+    generatedSources = resolveNewDirectories(workingDir, getOutputDirPath(moduleName, "generated_sources"))
+    generatedJavaSources = resolveNewDirectories(workingDir, getOutputDirPath(moduleName, "generated_java_sources"))
+    generatedStubClasses = resolveNewDirectories(workingDir, getOutputDirPath(moduleName, "stubs")).toString()
+    coverageMetadataClasses = resolveNewDirectories(workingDir, getOutputDirPath(moduleName, "coverage-metadata"))
   }
 
   with(root.inputsBuilder) {
@@ -279,3 +262,6 @@ private fun getOutputDirPath(
   dirName: String,
 ) = "_kotlinc/${moduleName}_jvm/$dirName"
 
+private fun resolveNewDirectories(file: Path, part: String): String {
+  return Files.createDirectories(file.resolve(part)).toString()
+}
