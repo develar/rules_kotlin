@@ -25,7 +25,7 @@ import java.net.URLClassLoader
 import java.nio.file.Path
 
 class KotlinToolchain private constructor(
-  internal val baseJars: List<Path>,
+  private val baseJars: List<Path>,
   @JvmField val jvmAbiGen: CompilerPlugin,
   @JvmField val skipCodeGen: CompilerPlugin,
   @JvmField val jdepsGen: CompilerPlugin,
@@ -124,16 +124,7 @@ class KotlinToolchain private constructor(
     }
   }
 
-  fun toolchainWithReflect(): KotlinToolchain {
-    return KotlinToolchain(
-      baseJars = baseJars + listOf(KOTLIN_REFLECT),
-      jvmAbiGen = jvmAbiGen,
-      skipCodeGen = skipCodeGen,
-      jdepsGen = jdepsGen,
-      kspSymbolProcessingApi = kspSymbolProcessingApi,
-      kspSymbolProcessingCommandLine = kspSymbolProcessingCommandLine,
-    )
-  }
+  fun getBaseJarsWithReflect(): List<Path> = baseJars + listOf(KOTLIN_REFLECT)
 }
 
 data class CompilerPlugin(
@@ -141,13 +132,12 @@ data class CompilerPlugin(
   @JvmField val id: String,
 )
 
-class KotlincInvoker(toolchain: KotlinToolchain) {
+class KotlincInvoker(baseJars: List<Path>) {
   private val execMethod: MethodHandle
 
   init {
     System.setProperty("zip.handler.uses.crc.instead.of.timestamp", "true")
 
-    val baseJars = toolchain.baseJars
     val classloader = try {
       // not system, but platform as parent - we should not include app classpath, only platform (JDK)
       URLClassLoader(

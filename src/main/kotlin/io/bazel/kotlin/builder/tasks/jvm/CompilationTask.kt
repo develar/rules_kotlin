@@ -21,6 +21,7 @@ package io.bazel.kotlin.builder.tasks.jvm
 import com.google.devtools.build.lib.view.proto.Deps
 import com.google.devtools.build.lib.view.proto.Deps.Dependencies
 import io.bazel.kotlin.builder.toolchain.CompilationTaskContext
+import io.bazel.kotlin.builder.toolchain.KotlinToolchain
 import io.bazel.kotlin.builder.toolchain.KotlincInvoker
 import io.bazel.kotlin.builder.utils.IS_JVM_SOURCE_FILE
 import io.bazel.kotlin.builder.utils.bazelRuleKind
@@ -136,33 +137,34 @@ internal fun preProcessingSteps(
   }
 }
 
-internal fun JvmCompilationTask.kspArgs(plugins: InternalCompilerPlugins): CompilationArgs {
+internal fun kspArgs(task: JvmCompilationTask, toolchain: KotlinToolchain): CompilationArgs {
   val args = CompilationArgs()
-  args.plugin(plugins.kspSymbolProcessingCommandLine)
-  args.plugin(plugins.kspSymbolProcessingApi) {
+  args.plugin(toolchain.kspSymbolProcessingCommandLine)
+  val dirs = task.directories
+  args.plugin(toolchain.kspSymbolProcessingApi) {
     args.flag("-Xallow-no-source-files")
 
     val values =
       arrayOf(
-        "apclasspath" to listOf(inputs.processorpaths.joinToString(File.pathSeparator)),
+        "apclasspath" to listOf(task.inputs.processorpaths.joinToString(File.pathSeparator)),
         // projectBaseDir shouldn't matter because incremental is disabled
-        "projectBaseDir" to listOf(directories.incrementalData),
+        "projectBaseDir" to listOf(dirs.incrementalData),
         // Disable incremental mode
         "incremental" to listOf("false"),
         // Directory where class files are written to. Files written to this directory are class
         // files being written directly from the annotation processor, not Kotlinc
-        "classOutputDir" to listOf(directories.generatedClasses),
+        "classOutputDir" to listOf(dirs.generatedClasses),
         // Directory where generated Java sources files are written to
-        "javaOutputDir" to listOf(directories.generatedJavaSources),
+        "javaOutputDir" to listOf(dirs.generatedJavaSources),
         // Directory where generated Kotlin sources files are written to
-        "kotlinOutputDir" to listOf(directories.generatedSources),
+        "kotlinOutputDir" to listOf(dirs.generatedSources),
         // Directory where META-INF data is written to. This might not be the most ideal place to
         // write this. Maybe just directly to the classes' directory?
-        "resourceOutputDir" to listOf(directories.generatedSources),
+        "resourceOutputDir" to listOf(dirs.generatedSources),
         // TODO(bencodes) Not sure what this directory is yet.
-        "kspOutputDir" to listOf(directories.incrementalData),
+        "kspOutputDir" to listOf(dirs.incrementalData),
         // Directory to write KSP caches. Shouldn't matter because incremental is disabled
-        "cachesDir" to listOf(directories.incrementalData),
+        "cachesDir" to listOf(dirs.incrementalData),
         // Set withCompilation to false because we run this as part of the standard kotlinc pass
         // If we ever want to flip this to true, we probably want to integrate this directly
         // into the KotlinCompile action.
@@ -185,7 +187,7 @@ internal fun JvmCompilationTask.kspArgs(plugins: InternalCompilerPlugins): Compi
 internal fun runPlugins(
   compilationTask: JvmCompilationTask,
   context: CompilationTaskContext,
-  plugins: InternalCompilerPlugins,
+  plugins: KotlinToolchain,
   compiler: KotlincInvoker,
 ): JvmCompilationTask {
   if ((compilationTask.inputs.processors.isEmpty() && compilationTask.inputs.stubsPluginClasspath.isEmpty()) ||
@@ -204,7 +206,7 @@ internal fun runPlugins(
 
 private fun JvmCompilationTask.runKspPlugin(
   context: CompilationTaskContext,
-  plugins: InternalCompilerPlugins,
+  toolchain: KotlinToolchain,
   compiler: KotlincInvoker,
 ): JvmCompilationTask {
   return context.execute("Ksp (${inputs.processors.joinToString(", ")})") {
@@ -213,7 +215,7 @@ private fun JvmCompilationTask.runKspPlugin(
       LANGUAGE_VERSION_ARG to kspKotlinToolchainVersion(info.toolchainInfo.languageVersion),
     )
     baseArgs(overrides)
-      .plus(kspArgs(plugins))
+      .plus(kspArgs(this, toolchain))
       .flag("-d", directories.generatedClasses.toString())
       .values(inputs.kotlinSources)
       .values(inputs.javaSources)

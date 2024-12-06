@@ -79,23 +79,20 @@ fun buildKotlin(
       Files.readAllLines(Path.of(it.value))
     } ?: args,
   )
-  val compileContext = CompilationTaskContext(
-    createBuildTaskInfo(argMap),
-    taskContext.asPrintStream(),
-  )
+  val task = createBuildTaskInfo(argMap)
+  val compileContext = CompilationTaskContext(task.label, task.debug, taskContext.asPrintStream())
   var success = false
   try {
-    when (compileContext.info.platform) {
+    when (task.platform) {
       Platform.JVM -> executeJvmTask(
+        task = task,
         context = compileContext,
         workingDir = taskContext.directory,
         argMap = argMap,
         jvmTaskExecutor = jvmTaskExecutor,
       )
 
-      Platform.UNRECOGNIZED -> throw IllegalStateException(
-        "unrecognized platform: ${compileContext.info}",
-      )
+      Platform.UNRECOGNIZED -> throw IllegalStateException("unrecognized platform: $task")
     }
     success = true
   } catch (e: CompilationStatusException) {
@@ -139,12 +136,13 @@ private fun createBuildTaskInfo(argMap: ArgMap): CompilationTaskInfo {
 }
 
 private fun executeJvmTask(
+  task: CompilationTaskInfo,
   context: CompilationTaskContext,
   workingDir: Path,
   argMap: ArgMap,
   jvmTaskExecutor: KotlinJvmTaskExecutor,
 ) {
-  val task = buildJvmTask(context.info, workingDir, argMap)
+  val task = buildJvmTask(task, workingDir, argMap)
   context.whenTracing {
     printLines(
       header = "jvm task message:",

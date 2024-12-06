@@ -17,34 +17,27 @@
 package io.bazel.kotlin.builder.tasks.jvm
 
 import io.bazel.kotlin.builder.toolchain.CompilationTaskContext
-import io.bazel.kotlin.builder.toolchain.CompilerPlugin
+import io.bazel.kotlin.builder.toolchain.KotlinToolchain
 import io.bazel.kotlin.builder.toolchain.KotlincInvoker
 import io.bazel.kotlin.builder.utils.bazelRuleKind
 import io.bazel.kotlin.builder.utils.jars.JarCreator
 import io.bazel.kotlin.model.JvmCompilationTask
 import java.nio.file.Path
 
-class InternalCompilerPlugins(
-  @JvmField val jvmAbiGen: CompilerPlugin,
-  @JvmField val skipCodeGen: CompilerPlugin,
-  @JvmField val jdeps: CompilerPlugin,
-  @JvmField val kspSymbolProcessingApi: CompilerPlugin,
-  @JvmField val kspSymbolProcessingCommandLine: CompilerPlugin,
-)
-
 class KotlinJvmTaskExecutor(
-  private val compiler: KotlincInvoker,
-  private val plugins: InternalCompilerPlugins,
+  private val toolchain: KotlinToolchain,
 ) {
+  private val compiler = KotlincInvoker(baseJars = toolchain.getBaseJarsWithReflect())
+
   fun execute(
     context: CompilationTaskContext,
     task: JvmCompilationTask,
   ) {
-    val preprocessedTask = runPlugins(preProcessingSteps(task, context), context, plugins, compiler)
+    val preprocessedTask = runPlugins(preProcessingSteps(task, context), context, toolchain, compiler)
     context.execute("compile classes") {
       if (preprocessedTask.compileKotlin) {
         context.execute("kotlinc") {
-          doCompileKotlin(preprocessedTask, context, compiler, plugins)
+          doCompileKotlin(preprocessedTask, context, compiler, toolchain)
         }
       }
       doExecute(preprocessedTask, context)
@@ -56,7 +49,7 @@ private fun doCompileKotlin(
   preprocessedTask: JvmCompilationTask,
   context: CompilationTaskContext,
   compiler: KotlincInvoker,
-  plugins: InternalCompilerPlugins,
+  toolchain: KotlinToolchain,
 ) {
   val outputs = preprocessedTask.outputs
   compileKotlin(
@@ -64,7 +57,7 @@ private fun doCompileKotlin(
     context = context,
     compiler = compiler,
     args = preprocessedTask.baseArgs().given(outputs.jdeps).notEmpty {
-      plugin(plugins.jdeps) {
+      plugin(toolchain.jdepsGen) {
         flag("output", outputs.jdeps!!)
         flag("target_label", preprocessedTask.info.label)
         preprocessedTask.inputs.directDependencies.forEach {
@@ -75,11 +68,11 @@ private fun doCompileKotlin(
     }.given(outputs.jar).notEmpty {
       append(codeGenArgs(preprocessedTask))
     }.given(outputs.abijar).notEmpty {
-      plugin(plugins.jvmAbiGen) {
+      plugin(toolchain.jvmAbiGen) {
         flag("outputDir", preprocessedTask.directories.abiClasses!!.toString())
       }
       given(outputs.jar).empty {
-        plugin(plugins.skipCodeGen)
+        plugin(toolchain.skipCodeGen)
       }
     },
     printOnFail = false,

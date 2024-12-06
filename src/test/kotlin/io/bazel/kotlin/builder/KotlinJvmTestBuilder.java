@@ -19,11 +19,9 @@ package io.bazel.kotlin.builder;
 import io.bazel.kotlin.builder.Deps.AnnotationProcessor;
 import io.bazel.kotlin.builder.Deps.Dep;
 import io.bazel.kotlin.builder.KotlinJvmTestBuilder.JvmCompilationTaskBuilder.DirectoriesBuilder;
-import io.bazel.kotlin.builder.tasks.jvm.InternalCompilerPlugins;
 import io.bazel.kotlin.builder.tasks.jvm.KotlinJvmTaskExecutor;
 import io.bazel.kotlin.builder.toolchain.CompilationTaskContext;
 import io.bazel.kotlin.builder.toolchain.KotlinToolchain;
-import io.bazel.kotlin.builder.toolchain.KotlincInvoker;
 import io.bazel.kotlin.model.JvmCompilationTask;
 import io.bazel.kotlin.model.JvmCompilationTask.Directories;
 import io.bazel.kotlin.model.JvmCompilationTask.Inputs;
@@ -61,16 +59,7 @@ public final class KotlinJvmTestBuilder extends KotlinAbstractTestBuilder<JvmCom
   private static KotlinBuilderTestComponent component() {
     if (component == null) {
       KotlinToolchain toolchain = toolchainForTest();
-      KotlinJvmTaskExecutor executor = new KotlinJvmTaskExecutor(
-        new KotlincInvoker(toolchain),
-        new InternalCompilerPlugins(
-          toolchain.jvmAbiGen,
-          toolchain.skipCodeGen,
-          toolchain.jdepsGen,
-          toolchain.kspSymbolProcessingApi,
-          toolchain.kspSymbolProcessingCommandLine
-        )
-      );
+      KotlinJvmTaskExecutor executor = new KotlinJvmTaskExecutor(toolchain);
       component = new KotlinBuilderTestComponent() {
         @Override
         public KotlinJvmTaskExecutor jvmTaskExecutor() {

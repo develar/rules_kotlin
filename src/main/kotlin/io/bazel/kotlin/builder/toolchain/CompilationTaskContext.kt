@@ -16,7 +16,6 @@
  */
 package io.bazel.kotlin.builder.toolchain
 
-import io.bazel.kotlin.model.CompilationTaskInfo
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.File
@@ -24,7 +23,8 @@ import java.io.PrintStream
 import java.nio.file.Path
 
 class CompilationTaskContext(
-  @JvmField val info: CompilationTaskInfo,
+  private val label: String,
+  debug: List<String>,
   private val out: PrintStream,
   private val executionRoot: String = Path.of("").toAbsolutePath().toString() + File.separator,
 ) {
@@ -34,7 +34,7 @@ class CompilationTaskContext(
   @JvmField val isTracing: Boolean
 
   init {
-    val debugging = HashSet(info.debug)
+    val debugging = HashSet(debug)
     timings = if (debugging.contains("timings")) mutableListOf() else null
     isTracing = debugging.contains("trace")
   }
@@ -156,7 +156,7 @@ class CompilationTaskContext(
     if (successful) {
       timings?.also {
         printLines(
-          "Task timings for ${info.label} (total: ${System.currentTimeMillis() - start} ms)",
+          "Task timings for $label (total: ${System.currentTimeMillis() - start} ms)",
           it.asSequence(),
         )
       }
