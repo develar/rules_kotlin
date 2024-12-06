@@ -16,9 +16,7 @@
 package io.bazel.kotlin.builder;
 
 import com.google.auto.value.AutoValue;
-import com.google.common.base.Preconditions;
-import com.google.common.collect.ImmutableList;
-import io.bazel.kotlin.builder.utils.BazelRunFiles;
+import io.bazel.kotlin.builder.utils.BazelRunFilesKt;
 
 import javax.annotation.Nullable;
 import java.io.File;
@@ -34,7 +32,7 @@ public final class Deps {
     @AutoValue
     public abstract static class Dep {
         public static Builder builder() {
-            return new AutoValue_Deps_Dep.Builder().runtimeDeps(ImmutableList.of());
+            return new AutoValue_Deps_Dep.Builder().runtimeDeps(List.of());
         }
 
         /**
@@ -50,13 +48,12 @@ public final class Deps {
         public static Dep importJar(String label, File compileJar) {
             return Dep.builder()
                     .label(label)
-                    .compileJars(
-                            ImmutableList.of(compileJar.getAbsolutePath()))
+                    .compileJars(List.of(compileJar.getAbsolutePath()))
                     .build();
         }
 
         /**
-         * Reads dependency path from jvm_args for a given label, provided that the label has been added
+         * Reads a dependency path from jvm_args for a given label, provided that the label has been added
          * as a jvm property.
          * <p>
          * See src/test/kotlin/io/bazel/kotlin/defs.bzl for an example of proper label and runfile
@@ -70,17 +67,16 @@ public final class Deps {
             // jvm properties do not allow slashes or :.
             String key = label.replaceAll("/", ".").replaceAll(":", ".");
             Properties properties = System.getProperties();
-            Preconditions.checkArgument(properties.containsKey(key),
-                    String.format("Unable to find %s in properties:\n%s", key,
-                            properties.keySet()
-                                    .stream()
-                                    .map(Object::toString)
-                                    .collect(Collectors.joining("\n"))));
+            if (!properties.containsKey(key)) {
+              throw new IllegalStateException(String.format("Unable to find %s in properties:\n%s", key,
+                properties.keySet()
+                  .stream()
+                  .map(Object::toString)
+                  .collect(Collectors.joining("\n"))));
+            }
             return Dep.builder()
                     .label(label)
-                    .compileJars(
-                            ImmutableList.of(
-                                    BazelRunFiles.INSTANCE.resolveVerifiedFromProperty(key).getPath()))
+                    .compileJars(List.of(BazelRunFilesKt.resolveVerifiedFromProperty(key).toString()))
                     .build();
         }
 
@@ -98,10 +94,12 @@ public final class Deps {
         @Nullable
         public abstract String jdeps();
 
-        public final String singleCompileJar() {
-            Preconditions.checkState(compileJars().size() == 1);
-            return compileJars().get(0);
+      public final String singleCompileJar() {
+        if (compileJars().size() != 1) {
+          throw new IllegalStateException("Expected exactly one compile jar, but got " + compileJars());
         }
+        return compileJars().get(0);
+      }
 
         @SuppressWarnings("UnusedReturnValue")
         @AutoValue.Builder

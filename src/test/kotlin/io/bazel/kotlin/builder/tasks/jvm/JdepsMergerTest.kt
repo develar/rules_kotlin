@@ -6,8 +6,6 @@ import com.google.devtools.build.lib.view.proto.Deps.Dependency
 import io.bazel.kotlin.builder.tasks.MergeJdeps
 import io.bazel.kotlin.builder.utils.Flag
 import io.bazel.kotlin.builder.utils.jars.JarCreator
-import io.bazel.worker.Status
-import io.bazel.worker.Status.SUCCESS
 import io.bazel.worker.WorkerContext
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -89,7 +87,7 @@ class JdepsMergerTest {
       }
     }
 
-    assertThat(result.status).isEqualTo(SUCCESS)
+    assertThat(result.status).isEqualTo(0)
 
     val depsProto = depsProto(mergedJdeps)
     assertThat(depsProto.ruleLabel).isEqualTo("//foo/bar:baz")
@@ -138,7 +136,7 @@ class JdepsMergerTest {
       }
     }
 
-    assertThat(result.status).isEqualTo(SUCCESS)
+    assertThat(result.status).isEqualTo(0)
 
     val depsProto = depsProto(mergedJdeps)
     assertThat(depsProto.dependencyList.map { it.path }).containsExactly("/path/to/shared_dep.jar")
@@ -184,7 +182,7 @@ class JdepsMergerTest {
         )
       }
     }
-    assertThat(result.status).isEqualTo(SUCCESS)
+    assertThat(result.status).isEqualTo(0)
     assertThat(result.log.out.toString()).contains("'remove deps kotlin_dep' //foo/bar:baz")
 
     val depsProto = depsProto(mergedJdeps)
@@ -282,7 +280,7 @@ class JdepsMergerTest {
         )
       }
     }
-    assertThat(result.status).isEqualTo(SUCCESS)
+    assertThat(result.status).isEqualTo(0)
     assertThat(result.log.out.toString()).contains("'remove deps kotlin_dep' //foo/bar:baz")
   }
 
@@ -322,7 +320,7 @@ class JdepsMergerTest {
         )
       }
     }
-    assertThat(result.status).isEqualTo(SUCCESS)
+    assertThat(result.status).isEqualTo(0)
 
     val depsProto = depsProto(mergedJdeps)
     assertThat(

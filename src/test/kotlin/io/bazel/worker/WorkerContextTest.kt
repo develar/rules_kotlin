@@ -19,7 +19,6 @@ package io.bazel.worker
 
 import com.google.common.truth.Truth.assertThat
 import io.bazel.worker.ContextLog.Granularity.DEBUG
-import io.bazel.worker.Status.SUCCESS
 import org.junit.Test
 
 class WorkerContextTest {
@@ -34,10 +33,10 @@ class WorkerContextTest {
       info { "outer context" }
       return@run doTask("work") { ctx ->
         ctx.info { "inner context" }
-        SUCCESS
+        0
       }
     }
-    assertThat(result.status).isEqualTo(SUCCESS)
+    assertThat(result.status).isEqualTo(0)
     assertThat(result.log.toString()).contains("logging work\nINFO: inner context")
     assertThat(outerLog).containsAtLeast(
       "INFO: outer context",

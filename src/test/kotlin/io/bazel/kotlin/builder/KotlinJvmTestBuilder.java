@@ -16,8 +16,6 @@
  */
 package io.bazel.kotlin.builder;
 
-import com.google.common.base.Preconditions;
-import com.google.common.collect.ImmutableList;
 import io.bazel.kotlin.builder.Deps.AnnotationProcessor;
 import io.bazel.kotlin.builder.Deps.Dep;
 import io.bazel.kotlin.builder.tasks.KotlinBuilder;
@@ -25,11 +23,14 @@ import io.bazel.kotlin.builder.tasks.jvm.InternalCompilerPlugins;
 import io.bazel.kotlin.builder.tasks.jvm.KotlinJvmTaskExecutor;
 import io.bazel.kotlin.builder.toolchain.CompilationTaskContext;
 import io.bazel.kotlin.builder.toolchain.KotlinToolchain;
+import io.bazel.kotlin.builder.toolchain.KotlincInvoker;
 import io.bazel.kotlin.model.CompilationTaskInfo;
 import io.bazel.kotlin.model.JvmCompilationTask;
 
 import java.util.EnumSet;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -99,7 +100,7 @@ public final class KotlinJvmTestBuilder extends KotlinAbstractTestBuilder<JvmCom
     if (component == null) {
       KotlinToolchain toolchain = toolchainForTest();
       KotlinJvmTaskExecutor executor = new KotlinJvmTaskExecutor(
-        new KotlinToolchain.KotlincInvoker(toolchain),
+        new KotlincInvoker(toolchain),
         new InternalCompilerPlugins(
           toolchain.jvmAbiGen,
           toolchain.skipCodeGen,
@@ -151,11 +152,11 @@ public final class KotlinJvmTestBuilder extends KotlinAbstractTestBuilder<JvmCom
 
                     return Dep.builder()
                             .label(taskBuilder.getInfo().getLabel())
-                            .compileJars(ImmutableList.of(
+                            .compileJars(List.of(
                                     outputs.getAbijar().isEmpty() ? outputs.getJar() : outputs.getAbijar()
                             ))
                             .jdeps(outputs.getJdeps())
-                            .runtimeDeps(ImmutableList.copyOf(taskBuilder.getInputs().getClasspathList()))
+                            .runtimeDeps(List.copyOf(taskBuilder.getInputs().getClasspathList()))
                             .sourceJar(taskBuilder.getOutputs().getSrcjar())
                             .build();
                 });
@@ -200,9 +201,10 @@ public final class KotlinJvmTestBuilder extends KotlinAbstractTestBuilder<JvmCom
         }
 
         public void addAnnotationProcessors(AnnotationProcessor... annotationProcessors) {
-            Preconditions.checkState(
-                    taskBuilder.getInputs().getProcessorsList().isEmpty(), "processors already set");
-            HashSet<String> processorClasses = new HashSet<>();
+          if (!taskBuilder.getInputs().getProcessorsList().isEmpty()) {
+            throw new IllegalStateException("processors already set");
+          }
+            Set<String> processorClasses = new HashSet<>();
             taskBuilder
                     .getInputsBuilder()
                     .addAllProcessorpaths(

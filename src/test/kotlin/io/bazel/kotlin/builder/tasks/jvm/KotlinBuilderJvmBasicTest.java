@@ -25,8 +25,11 @@ import org.junit.runners.JUnit4;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.math.BigInteger;
 import java.nio.file.Files;
-import java.nio.file.Paths;
+import java.nio.file.Path;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.function.Consumer;
 
 import static com.google.common.truth.Truth.assertThat;
@@ -46,12 +49,13 @@ public class KotlinBuilderJvmBasicTest {
 
     private static String hashDep(String path) {
         try {
-            //noinspection UnstableApiUsage
-            return com.google.common.hash.Hashing.sha256()
-                    .hashBytes(Files.readAllBytes(Paths.get(path)))
-                    .toString();
+          byte[] hash = MessageDigest.getInstance("SHA-256").digest(Files.readAllBytes(Path.of(path)));
+          return new BigInteger(1, hash).toString(16);
         } catch (IOException e) {
             throw new UncheckedIOException(e);
+        }
+        catch (NoSuchAlgorithmException e) {
+          throw new RuntimeException(e);
         }
     }
 
