@@ -18,15 +18,12 @@
 package io.bazel.kotlin.builder.cmd
 
 import io.bazel.kotlin.builder.tasks.MergeJdeps
-import io.bazel.worker.Worker
+import io.bazel.worker.createWorker
 import kotlin.system.exitProcess
 
 object MergeJdeps {
   @JvmStatic
   fun main(args: Array<String>) {
-    val result = Worker.from(args.toList()) {
-      it.start(MergeJdeps())
-    }
-    exitProcess(result)
+    exitProcess(createWorker(args.toList()).start(MergeJdeps()))
   }
 }

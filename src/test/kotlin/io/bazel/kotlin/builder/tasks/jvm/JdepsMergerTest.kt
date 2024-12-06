@@ -73,7 +73,7 @@ class JdepsMergerTest {
     val mergedJdeps = out("merged.jdeps")
 
     val result = WorkerContext.run { workerContext ->
-      doTask(workerContext, "jdepsmerge") { taskCtx ->
+      doTask(Path.of("."), workerContext, "jdepsmerge") { taskCtx ->
         MergeJdeps().invoke(
           taskCtx,
           args {
@@ -122,7 +122,7 @@ class JdepsMergerTest {
     val mergedJdeps = out("merged.jdeps")
 
     val result = WorkerContext.run { workerContext ->
-      doTask(workerContext, "jdepsmerge") { taskCtx ->
+      doTask(Path.of("."), workerContext, "jdepsmerge") { taskCtx ->
         MergeJdeps().invoke(
           taskCtx,
           args {
@@ -169,7 +169,7 @@ class JdepsMergerTest {
     val mergedJdeps = out("merged.jdeps")
 
     val result = WorkerContext.run { workerContext ->
-      doTask(workerContext, "jdepsmerge") { taskCtx ->
+      doTask(Path.of("."), workerContext, "jdepsmerge") { taskCtx ->
         MergeJdeps().invoke(
           taskCtx,
           args {
@@ -220,7 +220,7 @@ class JdepsMergerTest {
 
     val worker = MergeJdeps()
     val result = WorkerContext.run { workerContext ->
-      doTask(workerContext, "jdepsmerge") { taskCtx ->
+      doTask(Path.of("."), workerContext, "jdepsmerge") { taskCtx ->
         worker.invoke(
           taskCtx,
           args {
@@ -268,7 +268,7 @@ class JdepsMergerTest {
     val mergedJdeps = out("merged.jdeps")
 
     val result = WorkerContext.run { workerContext ->
-      doTask(workerContext, "jdepsmerge") { taskCtx ->
+      doTask(Path.of("."), workerContext, "jdepsmerge") { taskCtx ->
         MergeJdeps().invoke(
           taskCtx,
           args {
@@ -308,7 +308,7 @@ class JdepsMergerTest {
     val mergedJdeps = out("merged.jdeps")
 
     val result = WorkerContext.run { workerContext ->
-      doTask(workerContext, "jdepsmerge") { taskCtx ->
+      doTask(Path.of("."), workerContext, "jdepsmerge") { taskCtx ->
         MergeJdeps().invoke(
           taskCtx,
           args {

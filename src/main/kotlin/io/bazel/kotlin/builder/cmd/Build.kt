@@ -20,18 +20,15 @@ package io.bazel.kotlin.builder.cmd
 import io.bazel.kotlin.builder.tasks.buildKotlin
 import io.bazel.kotlin.builder.tasks.jvm.KotlinJvmTaskExecutor
 import io.bazel.kotlin.builder.toolchain.KotlinToolchain
-import io.bazel.worker.Worker
+import io.bazel.worker.createWorker
 import kotlin.system.exitProcess
 
 object Build {
   @JvmStatic
   fun main(args: Array<String>) {
-    val status = Worker.from(args.asList()) { worker ->
-      val toolchain = KotlinToolchain.createToolchain()
-      val jvmTaskExecutor = KotlinJvmTaskExecutor(toolchain)
-      worker.start { ctx, args ->
-        buildKotlin(ctx, args, jvmTaskExecutor)
-      }
+    val jvmTaskExecutor = KotlinJvmTaskExecutor(KotlinToolchain.createToolchain())
+    val status = createWorker(args.asList()).start { taskContext, args ->
+      buildKotlin(taskContext, args, jvmTaskExecutor)
     }
     exitProcess(status)
   }

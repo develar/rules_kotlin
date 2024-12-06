@@ -30,6 +30,8 @@ import java.util.logging.Level
 import java.util.logging.Logger
 import java.util.logging.SimpleFormatter
 import java.util.logging.StreamHandler
+import kotlin.io.path.ExperimentalPathApi
+import kotlin.io.path.deleteRecursively
 
 /** WorkerContext encapsulates logging, filesystem, and profiling for a task invocation. */
 class WorkerContext @PublishedApi internal constructor(
@@ -61,17 +63,19 @@ class WorkerContext @PublishedApi internal constructor(
   }
 }
 
+@OptIn(ExperimentalPathApi::class)
 inline fun doTask(
+  workingDir: Path,
   workerContext: WorkerContext,
   name: String,
   task: (sub: TaskContext) -> Int,
 ): TaskResult {
   workerContext.scopeLogging.info { "start task $name" }
   val subLogging = workerContext.scopeLogging.narrowTo(name)
-  val status = WorkingDirectoryContext(Files.createTempDirectory("pwd")).use { wd ->
-    val taskContext = TaskContext(wd.workingDir, logging = subLogging)
+  val tempDir = Files.createTempDirectory(workingDir, "kotlinc")
+  val status = try {
     try {
-      TaskResult(task(taskContext), subLogging.contents())
+      TaskResult(task(TaskContext(workingDir = tempDir, logging = subLogging)), subLogging.contents())
     } catch (e: Throwable) {
       when (e.causes.lastOrNull()) {
         is InterruptedException, is InterruptedIOException -> subLogging.error(e) { "ERROR: Interrupted" }
@@ -79,6 +83,9 @@ inline fun doTask(
       }
       TaskResult(1, subLogging.contents())
     }
+  }
+  finally {
+    tempDir.deleteRecursively()
   }
   workerContext.scopeLogging.info { "end task $name: ${status.status}" }
   return status

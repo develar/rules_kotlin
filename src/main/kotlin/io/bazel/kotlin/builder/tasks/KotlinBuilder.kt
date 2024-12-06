@@ -73,7 +73,10 @@ fun buildKotlin(
   args: List<String>,
   jvmTaskExecutor: KotlinJvmTaskExecutor,
 ): Int {
-  check(args.isNotEmpty()) { "expected at least a single arg got: ${args.joinToString(" ")}" }
+  check(args.isNotEmpty()) {
+    "expected at least a single arg got: ${args.joinToString(" ")}"
+  }
+
   val argMap = createArgMap(
     FLAG_FILE_RE.matchEntire(args[0])?.groups?.get(1)?.let {
       Files.readAllLines(Path.of(it.value))

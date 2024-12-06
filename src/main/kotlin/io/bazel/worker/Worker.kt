@@ -17,23 +17,19 @@
 
 package io.bazel.worker
 
+import com.google.devtools.build.lib.worker.ProtoWorkerMessageProcessor
+import com.google.devtools.build.lib.worker.WorkRequestHandler.WorkRequestCallback
+import com.google.devtools.build.lib.worker.WorkRequestHandler.WorkRequestHandlerBuilder
+import java.io.IOException
+import java.nio.file.Path
+
 /** Worker executes a unit of Work */
 interface Worker {
-  companion object {
-    inline fun from(
-      args: List<String>,
-      then: (Worker) -> Int,
-    ): Int {
-      return then(
-        when {
-          "--persistent_worker" in args -> PersistentWorker()
-          else -> InvocationWorker(args)
-        }
-      )
-    }
-  }
-
   fun start(execute: Work): Int
+}
+
+fun createWorker(args: List<String>): Worker {
+  return if ("--persistent_worker" in args) PersistentWorker() else InvocationWorker(args)
 }
 
 /** Task for Worker execution. */
@@ -42,4 +38,68 @@ fun interface Work {
     ctx: TaskContext,
     args: List<String>,
   ): Int
+}
+
+/**
+ * PersistentWorker satisfies Bazel persistent worker protocol for executing work.
+ *
+ * Supports multiplex (https://docs.bazel.build/versions/master/multiplex-worker.html) provided
+ * the work is thread/coroutine safe.
+ */
+@PublishedApi
+internal class PersistentWorker : Worker {
+  private val processWorkingDir = Path.of(".").toAbsolutePath().normalize()
+
+  override fun start(executeTask: Work): Int {
+    return WorkerContext.run { workerContext ->
+      val realStdErr = System.err
+      try {
+        val workerHandler = WorkRequestHandlerBuilder(
+          WorkRequestCallback { request, pw ->
+            val workingDir = request.sandboxDir?.let { processWorkingDir.resolve(it) }
+              ?: processWorkingDir
+            val result = doTask(
+              workingDir = workingDir,
+              workerContext = workerContext,
+              name = "request ${request.requestId}",
+              task = { taskContext -> executeTask(taskContext, request.argumentsList) },
+            )
+            pw.print(result.log.out.toString())
+            result.status
+          },
+          realStdErr,
+          ProtoWorkerMessageProcessor(System.`in`, System.out),
+        )
+          .build()
+        workerHandler.processRequests()
+      } catch (e: IOException) {
+        workerContext.scopeLogging.error(e) { "Unknown IO exception" }
+        e.printStackTrace(realStdErr)
+        return@run 1
+      }
+      return@run 0
+    }
+  }
+}
+
+class InvocationWorker(
+  private val args: List<String>,
+) : Worker {
+  private val processWorkingDir = Path.of(".").toAbsolutePath().normalize()
+
+  override fun start(execute: Work): Int {
+    return runCatching {
+      WorkerContext.run { workerContext ->
+        val result = doTask(
+          workingDir = processWorkingDir,
+          workerContext = workerContext,
+          name = "invocation"
+        ) { ctx -> execute(ctx, args) }
+        print(result.log.out.toString())
+        result.status
+      }
+    }.recover {
+      1
+    }.getOrThrow()
+  }
 }

@@ -20,6 +20,7 @@ package io.bazel.worker
 import com.google.common.truth.Truth.assertThat
 import io.bazel.worker.ContextLog.Granularity.DEBUG
 import org.junit.Test
+import java.nio.file.Path
 
 class WorkerContextTest {
   @Test
@@ -31,7 +32,7 @@ class WorkerContextTest {
       report = { log -> outerLog = log.out.split("\n") }
     ) { workerContext ->
       workerContext.scopeLogging.info { "outer context" }
-      return@run doTask(workerContext, "work") { ctx ->
+      return@run doTask(Path.of("."), workerContext, "work") { ctx ->
         ctx.info { "inner context" }
         0
       }
