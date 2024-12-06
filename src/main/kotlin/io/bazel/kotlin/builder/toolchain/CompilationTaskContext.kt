@@ -18,15 +18,13 @@ package io.bazel.kotlin.builder.toolchain
 
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
-import java.io.File
 import java.io.PrintStream
-import java.nio.file.Path
 
 class CompilationTaskContext(
   private val label: String,
   debug: List<String>,
   private val out: PrintStream,
-  private val executionRoot: String = Path.of("").toAbsolutePath().toString() + File.separator,
+  private val executionRoot: String,
 ) {
   private val start = System.currentTimeMillis()
   private var timings: MutableList<String>?
@@ -81,10 +79,10 @@ class CompilationTaskContext(
 
   private fun trimExecutionRootPrefix(toPrint: String): String {
     // trim off the workspace component
-    return if (toPrint.startsWith(executionRoot)) {
-      toPrint.replaceFirst(executionRoot, "")
+    if (toPrint.startsWith(executionRoot)) {
+      return toPrint.replaceFirst(executionRoot, "")
     } else {
-      toPrint
+      return toPrint
     }
   }
 

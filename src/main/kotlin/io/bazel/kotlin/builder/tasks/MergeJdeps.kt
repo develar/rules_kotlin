@@ -48,12 +48,12 @@ class MergeJdeps : Work {
     )
   }
 
-  private fun getArgs(args: List<String>): ArgMap {
+  private fun getArgs(args: List<String>): ArgMap<JdepsMergerFlags> {
     check(args.isNotEmpty()) { "expected at least a single arg got: ${args.joinToString(" ")}" }
     val lines = FLAGFILE_RE.matchEntire(args[0])?.groups?.get(1)?.let {
       Files.readAllLines(FileSystems.getDefault().getPath(it.value), StandardCharsets.UTF_8)
     } ?: args
 
-    return createArgMap(lines)
+    return createArgMap(lines, JdepsMergerFlags::class.java)
   }
 }

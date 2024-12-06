@@ -116,7 +116,6 @@ abstract class KotlinAbstractTestBuilder<T> {
     toolchainBuilder.apiVersion = "1.8";
     toolchainBuilder.coroutines = "enabled";
     toolchainBuilder.languageVersion = "1.8";
-    toolchainBuilder.jvmTarget = "1.8";
 
     infoBuilder
       .setLabel("//some/bogus:" + label())
@@ -334,15 +333,13 @@ abstract class KotlinAbstractTestBuilder<T> {
   public static final class KotlinToolchainInfoBuilder {
     String languageVersion;
     String apiVersion;
-    String coroutines;;
-    String jvmTarget;
+    String coroutines;
 
     public KotlinToolchainInfo build() {
       return new KotlinToolchainInfo(
         languageVersion,
         apiVersion,
-        coroutines,
-        jvmTarget
+        coroutines
       );
     }
   }

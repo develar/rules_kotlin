@@ -20,9 +20,7 @@ package io.bazel.worker
 import com.google.devtools.build.lib.worker.ProtoWorkerMessageProcessor
 import com.google.devtools.build.lib.worker.WorkRequestHandler.WorkRequestCallback
 import com.google.devtools.build.lib.worker.WorkRequestHandler.WorkRequestHandlerBuilder
-import com.google.devtools.build.lib.worker.WorkerProtocol.WorkRequest
 import java.io.IOException
-import java.io.PrintWriter
 
 /**
  * PersistentWorker satisfies Bazel persistent worker protocol for executing work.
@@ -32,12 +30,13 @@ import java.io.PrintWriter
  */
 class PersistentWorker : Worker {
   override fun start(execute: Work): Int {
-    return WorkerContext.run {
+    return WorkerContext.run { workerContext ->
       val realStdErr = System.err
       try {
         val workerHandler = WorkRequestHandlerBuilder(
           WorkRequestCallback { request, pw ->
             val result = doTask(
+              workerContext = workerContext,
               name = "request ${request.requestId}",
               task = { ctx -> execute(ctx, request.argumentsList) },
             )
@@ -50,7 +49,7 @@ class PersistentWorker : Worker {
           .build()
         workerHandler.processRequests()
       } catch (e: IOException) {
-        this.error(e) { "Unknown IO exception" }
+        workerContext.scopeLogging.error(e) { "Unknown IO exception" }
         e.printStackTrace(realStdErr)
         return@run 1
       }

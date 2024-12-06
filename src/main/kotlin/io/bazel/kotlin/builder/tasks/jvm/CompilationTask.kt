@@ -28,8 +28,8 @@ import io.bazel.kotlin.builder.utils.bazelRuleKind
 import io.bazel.kotlin.builder.utils.jars.JarCreator
 import io.bazel.kotlin.builder.utils.jars.SourceJarExtractor
 import io.bazel.kotlin.builder.utils.partitionJvmSources
+import io.bazel.kotlin.model.Directories
 import io.bazel.kotlin.model.JvmCompilationTask
-import io.bazel.kotlin.model.JvmCompilationTask.Directories
 import java.io.BufferedInputStream
 import java.io.File
 import java.nio.file.Files
@@ -58,10 +58,10 @@ fun codeGenArgs(compilationTask: JvmCompilationTask): CompilationArgs {
     .values(compilationTask.info.passthroughFlags)
 }
 
-fun JvmCompilationTask.baseArgs(overrides: Map<String, String> = emptyMap()): CompilationArgs {
-  val classpath: Sequence<String> = if (info.reducedClasspathMode == "KOTLINBUILDER_REDUCED") {
+fun baseArgs(task: JvmCompilationTask, overrides: Map<String, String> = emptyMap()): CompilationArgs {
+  val classpath: Sequence<String> = if (task.info.reducedClasspathMode == "KOTLINBUILDER_REDUCED") {
     val transitiveDepsForCompile = LinkedHashSet<String>()
-    for (jdepsPath in inputs.depsArtifacts) {
+    for (jdepsPath in task.inputs.depsArtifacts) {
       BufferedInputStream(Files.newInputStream(Path.of(jdepsPath))).use {
         val deps = Dependencies.parseFrom(it)
         for (dep in deps.dependencyList) {
@@ -71,24 +71,24 @@ fun JvmCompilationTask.baseArgs(overrides: Map<String, String> = emptyMap()): Co
         }
       }
     }
-    inputs.directDependencies.asSequence() + transitiveDepsForCompile
+    task.inputs.directDependencies.asSequence() + transitiveDepsForCompile
   }
   else {
-    inputs.classpath.asSequence()
+    task.inputs.classpath.asSequence()
   }
 
-  val classPathString = (classpath + directories.generatedClasses).joinToString(File.pathSeparator)
+  val classPathString = (classpath + task.directories.generatedClasses).joinToString(File.pathSeparator)
 
   val compilationArgs = CompilationArgs()
   compilationArgs.flag("-cp").value(classPathString)
   return compilationArgs
-    .flag(API_VERSION_ARG, overrides[API_VERSION_ARG] ?: info.toolchainInfo.apiVersion)
+    .flag(API_VERSION_ARG, overrides[API_VERSION_ARG] ?: task.info.toolchainInfo.apiVersion)
     .flag(
       LANGUAGE_VERSION_ARG,
-      overrides[LANGUAGE_VERSION_ARG] ?: info.toolchainInfo.languageVersion,
+      overrides[LANGUAGE_VERSION_ARG] ?: task.info.toolchainInfo.languageVersion,
     )
-    .flag("-jvm-target", info.toolchainInfo.jvmTarget!!)
-    .flag("-module-name", info.moduleName)
+    .flag("-jvm-target", task.jvmTarget!!)
+    .flag("-module-name", task.info.moduleName)
 }
 
 internal fun plugins(
@@ -146,7 +146,7 @@ internal fun kspArgs(task: JvmCompilationTask, toolchain: KotlinToolchain): Comp
 
     val values =
       arrayOf(
-        "apclasspath" to listOf(task.inputs.processorpaths.joinToString(File.pathSeparator)),
+        "apclasspath" to listOf(task.inputs.processorPaths.joinToString(File.pathSeparator)),
         // projectBaseDir shouldn't matter because incremental is disabled
         "projectBaseDir" to listOf(dirs.incrementalData),
         // Disable incremental mode
@@ -214,7 +214,7 @@ private fun JvmCompilationTask.runKspPlugin(
       API_VERSION_ARG to kspKotlinToolchainVersion(info.toolchainInfo.apiVersion),
       LANGUAGE_VERSION_ARG to kspKotlinToolchainVersion(info.toolchainInfo.languageVersion),
     )
-    baseArgs(overrides)
+    baseArgs(this, overrides)
       .plus(kspArgs(this, toolchain))
       .flag("-d", directories.generatedClasses.toString())
       .values(inputs.kotlinSources)
@@ -266,7 +266,7 @@ fun compileKotlin(
   compilationTask: JvmCompilationTask,
   context: CompilationTaskContext,
   compiler: KotlincInvoker,
-  args: CompilationArgs = compilationTask.baseArgs(),
+  args: CompilationArgs = baseArgs(compilationTask),
   printOnFail: Boolean = true,
 ): List<String> {
   val inputs = compilationTask.inputs

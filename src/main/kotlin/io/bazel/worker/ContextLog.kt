@@ -53,15 +53,10 @@ data class ContextLog(
     fun error(msg: () -> String)
   }
 
-  /** Summarize all logs at invocation of contents. */
-  internal interface Summarize {
-    fun contents(): ContextLog
-  }
-
   /** ScopeLogging runtime messages to a namespace. */
-  internal interface ScopeLogging :
-    Summarize,
-    Logging {
+  interface ScopeLogging : Logging {
+    fun contents(): ContextLog
+
     fun narrowTo(name: String): ScopeLogging
 
     /** asPrintStream allows direct writing for backwards compatiblity. */

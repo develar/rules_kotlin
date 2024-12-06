@@ -29,9 +29,9 @@ class WorkerContextTest {
       named = "logging",
       verbose = DEBUG,
       report = { log -> outerLog = log.out.split("\n") }
-    ) {
-      info { "outer context" }
-      return@run doTask("work") { ctx ->
+    ) { workerContext ->
+      workerContext.scopeLogging.info { "outer context" }
+      return@run doTask(workerContext, "work") { ctx ->
         ctx.info { "inner context" }
         0
       }

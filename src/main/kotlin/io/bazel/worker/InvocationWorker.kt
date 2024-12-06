@@ -23,12 +23,10 @@ class InvocationWorker(
 ) : Worker {
   override fun start(execute: Work): Int {
     return runCatching {
-      WorkerContext.run {
-        val result = doTask("invocation") { ctx -> execute(ctx, args) }
-        result.run {
-          print(log.out.toString())
-          status
-        }
+      WorkerContext.run { workerContext ->
+        val result = doTask(workerContext, "invocation") { ctx -> execute(ctx, args) }
+        print(result.log.out.toString())
+        result.status
       }
     }.recover {
       1

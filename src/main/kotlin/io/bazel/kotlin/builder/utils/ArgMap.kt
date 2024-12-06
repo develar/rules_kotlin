@@ -17,18 +17,20 @@
 
 package io.bazel.kotlin.builder.utils
 
-class ArgMap(
-  private val map: Map<String, List<String>>,
+import java.util.*
+
+class ArgMap<T : Enum<T>>(
+  private val map: EnumMap<T, MutableList<String>>,
 ) {
   /**
    * Get the mandatory single value from a key
    */
-  private fun mandatorySingle(key: String): String {
+  fun mandatorySingle(key: T): String {
     return requireNotNull(optionalSingle(key)) { "$key is not optional" }
   }
 
-  private fun optionalSingle(key: String): String? {
-    return optional(key)?.let {
+  fun optionalSingle(key: T): String? {
+    return map[key]?.let {
       when (it.size) {
         0 -> throw IllegalArgumentException("$key did not have a value")
         1 -> it[0]
@@ -37,55 +39,38 @@ class ArgMap(
     }
   }
 
-  private fun optionalSingleIf(
-    key: String,
-    condition: () -> Boolean,
-  ): String? = if (condition()) optionalSingle(key) else mandatorySingle(key)
-
-  private fun mandatory(key: String): List<String> {
-    return optional(key) ?: throw IllegalArgumentException("$key is not optional")
+  fun mandatory(key: T): List<String> {
+    return map[key] ?: throw IllegalArgumentException("$key is not optional")
   }
 
-  private fun optional(key: String): List<String>? = map[key]
+  fun has(key: T): Boolean = map[key]?.isNotEmpty() ?: false
 
-  fun mandatorySingle(key: Flag) = mandatorySingle(key.flag)
-
-  fun optionalSingle(key: Flag) = optionalSingle(key.flag)
-
-  fun optionalSingleIf(
-    key: Flag,
-    condition: () -> Boolean,
-  ) = optionalSingleIf(key.flag, condition)
-
-  fun hasAll(vararg keys: Flag): Boolean = keys.all { optional(it.flag)?.isNotEmpty() ?: false }
-
-  fun mandatory(key: Flag) = mandatory(key.flag)
-
-  fun optional(key: Flag): List<String>? = optional(key.flag)
+  fun optional(key: T): List<String>? = map[key]
 }
 
-interface Flag {
-  val flag: String
-}
-
-fun createArgMap(args: List<String>): ArgMap {
-  val result = HashMap<String, MutableList<String>>()
-  var currentKey =
-    args.first().also { require(it.startsWith("--")) { "first arg must be a flag" } }
+fun <T : Enum<T>> createArgMap(
+  args: List<String>,
+  enumClass: Class<T>,
+): ArgMap<T> {
+  val result = EnumMap<T, MutableList<String>>(enumClass)
+  val keyString = args.first().also { require(it.startsWith("--")) { "first arg must be a flag" } }
+    .substring(2)
+  var currentKey = java.lang.Enum.valueOf(enumClass, keyString.uppercase())
   val currentValue = mutableListOf<String>()
-  val mergeCurrent = {
+
+  fun mergeCurrent() {
     result.computeIfAbsent(currentKey) { mutableListOf() }.addAll(currentValue)
     currentValue.clear()
   }
-  args
-    .drop(1)
-    .forEach {
-      if (it.startsWith("--")) {
-        mergeCurrent()
-        currentKey = it
-      } else {
-        currentValue.add(it)
-      }
-    }.also { mergeCurrent() }
+
+  for (it in args.drop(1)) {
+    if (it.startsWith("--")) {
+      mergeCurrent()
+      currentKey = java.lang.Enum.valueOf(enumClass, it.substring(2).uppercase())
+    } else {
+      currentValue.add(it)
+    }
+  }
+  mergeCurrent()
   return ArgMap(result)
 }

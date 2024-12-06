@@ -1,7 +1,6 @@
 package io.bazel.kotlin.builder.tasks.jvm
 
 import com.google.devtools.build.lib.view.proto.Deps
-import io.bazel.kotlin.builder.utils.Flag
 import io.bazel.kotlin.builder.utils.jars.JarOwner
 import io.bazel.worker.TaskContext
 import java.io.BufferedInputStream
@@ -12,13 +11,11 @@ import java.util.jar.JarFile
 /**
  * Declares the flags used by the java builder.
  */
-enum class JdepsMergerFlags(
-  override val flag: String,
-) : Flag {
-  INPUTS("--inputs"),
-  OUTPUT("--output"),
-  TARGET_LABEL("--target_label"),
-  REPORT_UNUSED_DEPS("--report_unused_deps"),
+enum class JdepsMergerFlags {
+  INPUTS,
+  OUTPUT,
+  TARGET_LABEL,
+  REPORT_UNUSED_DEPS,
 }
 
 /**

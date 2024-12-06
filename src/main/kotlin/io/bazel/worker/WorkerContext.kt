@@ -24,6 +24,7 @@ import java.io.ByteArrayOutputStream
 import java.io.Closeable
 import java.io.InterruptedIOException
 import java.io.PrintStream
+import java.nio.file.Files
 import java.nio.file.Path
 import java.util.logging.Level
 import java.util.logging.Logger
@@ -31,124 +32,125 @@ import java.util.logging.SimpleFormatter
 import java.util.logging.StreamHandler
 
 /** WorkerContext encapsulates logging, filesystem, and profiling for a task invocation. */
-class WorkerContext private constructor(
+class WorkerContext @PublishedApi internal constructor(
   private val name: String = Companion::class.java.canonicalName,
   private val verbose: Granularity = INFO,
-) : Closeable,
-  ScopeLogging by ContextLogger(name, verbose.level, null) {
+) : Closeable {
+  @JvmField val scopeLogging: ScopeLogging = ContextLogger(
+    name = name,
+    level = verbose.level,
+    propagateTo = null,
+  )
+
   companion object {
-    fun <T : Any?> run(
+    inline fun <T : Any?> run(
       named: String = "worker",
       verbose: Granularity = INFO,
       report: (ContextLog) -> Unit = {},
-      work: WorkerContext.() -> T,
+      work: (WorkerContext) -> T,
     ): T {
       val workerContext = WorkerContext(verbose = verbose, name = named)
-      return workerContext.use(work).also {
-        report(workerContext.contents())
-      }
+      val status = workerContext.use(work)
+      report(workerContext.scopeLogging.contents())
+      return status
     }
-  }
-
-  private class ContextLogger(
-    val name: String,
-    val level: Level,
-    val propagateTo: ContextLogger? = null,
-  ) : ScopeLogging {
-    private val profiles = mutableListOf<String>()
-
-    private val out by lazy {
-      ByteArrayOutputStream()
-    }
-
-    private val handler by lazy {
-      StreamHandler(out, SimpleFormatter()).also { h ->
-        h.level = this.level
-      }
-    }
-
-    private val logger: Logger by lazy {
-      object : Logger(name, null) {}.apply {
-        level = level
-        propagateTo?.apply { parent = logger }
-        addHandler(handler)
-      }
-    }
-
-    private val sourceName by lazy {
-      propagateTo?.name ?: "global"
-    }
-
-    override fun info(msg: () -> String) {
-      logger.logp(Level.INFO, sourceName, name, msg)
-    }
-
-    override fun error(
-      t: Throwable,
-      msg: () -> String,
-    ) {
-      logger.logp(Level.SEVERE, sourceName, name, t, msg)
-    }
-
-    override fun error(msg: () -> String) {
-      logger.logp(Level.SEVERE, sourceName, name, msg)
-    }
-
-    override fun debug(msg: () -> String) {
-      logger.logp(Level.FINE, sourceName, name, msg)
-    }
-
-    override fun narrowTo(name: String): ScopeLogging = ContextLogger(name, level, this)
-
-    override fun contents() = handler.flush().run { ContextLog(out.toByteArray(), profiles) }
-
-    override fun asPrintStream(): PrintStream = PrintStream(out, true)
-  }
-
-  /** doTask work in a TaskContext. */
-  fun doTask(
-    name: String,
-    task: (sub: TaskContext) -> Int,
-  ): TaskResult {
-    info { "start task $name" }
-    return WorkingDirectoryContext
-      .use {
-        TaskContext(dir, logging = narrowTo(name)).resultOf(task)
-      }.also {
-        info { "end task $name: ${it.status}" }
-      }
   }
 
   override fun close() {
-    info { "ending worker context" }
+    scopeLogging.info { "ending worker context" }
   }
 }
 
-class TaskContext internal constructor(
-  @JvmField val directory: Path,
-  logging: ScopeLogging,
-) : ScopeLogging by logging {
-  /** resultOf a status supplier that includes information collected in the Context. */
-  fun resultOf(executeTaskIn: (TaskContext) -> Int): TaskResult {
+inline fun doTask(
+  workerContext: WorkerContext,
+  name: String,
+  task: (sub: TaskContext) -> Int,
+): TaskResult {
+  workerContext.scopeLogging.info { "start task $name" }
+  val subLogging = workerContext.scopeLogging.narrowTo(name)
+  val status = WorkingDirectoryContext(Files.createTempDirectory("pwd")).use { wd ->
+    val taskContext = TaskContext(wd.workingDir, logging = subLogging)
     try {
-      return TaskResult(
-        executeTaskIn(this),
-        contents(),
-      )
-    } catch (t: Throwable) {
-      when (t.causes.lastOrNull()) {
-        is InterruptedException, is InterruptedIOException -> error(t) { "ERROR: Interrupted" }
-        else -> error(t) { "ERROR: unexpected exception" }
+      TaskResult(task(taskContext), subLogging.contents())
+    } catch (e: Throwable) {
+      when (e.causes.lastOrNull()) {
+        is InterruptedException, is InterruptedIOException -> subLogging.error(e) { "ERROR: Interrupted" }
+        else -> subLogging.error(e) { "ERROR: unexpected exception" }
       }
-      return TaskResult(
-        1,
-        contents(),
-      )
+      TaskResult(1, subLogging.contents())
+    }
+  }
+  workerContext.scopeLogging.info { "end task $name: ${status.status}" }
+  return status
+}
+
+private class ContextLogger(
+  val name: String,
+  val level: Level,
+  val propagateTo: ContextLogger? = null,
+) : ScopeLogging {
+  private val profiles = mutableListOf<String>()
+
+  private val out by lazy {
+    ByteArrayOutputStream()
+  }
+
+  private val handler by lazy {
+    StreamHandler(out, SimpleFormatter()).also { h ->
+      h.level = this.level
     }
   }
 
-  private val Throwable.causes
-    get(): Sequence<Throwable> {
-      return cause?.let { c -> sequenceOf(c) + c.causes } ?: emptySequence()
+  private val logger: Logger by lazy {
+    object : Logger(name, null) {}.apply {
+      level = level
+      propagateTo?.apply { parent = logger }
+      addHandler(handler)
     }
+  }
+
+  private val sourceName by lazy {
+    propagateTo?.name ?: "global"
+  }
+
+  override fun info(msg: () -> String) {
+    logger.logp(Level.INFO, sourceName, name, msg)
+  }
+
+  override fun error(
+    t: Throwable,
+    msg: () -> String,
+  ) {
+    logger.logp(Level.SEVERE, sourceName, name, t, msg)
+  }
+
+  override fun error(msg: () -> String) {
+    logger.logp(Level.SEVERE, sourceName, name, msg)
+  }
+
+  override fun debug(msg: () -> String) {
+    logger.logp(Level.FINE, sourceName, name, msg)
+  }
+
+  override fun narrowTo(name: String): ScopeLogging = ContextLogger(name, level, this)
+
+  override fun contents() = handler.flush().run { ContextLog(out.toByteArray(), profiles) }
+
+  override fun asPrintStream(): PrintStream = PrintStream(out, true)
 }
+
+data class TaskResult(
+  @JvmField val status: Int,
+  @JvmField val log: ContextLog,
+)
+
+@PublishedApi
+internal val Throwable.causes
+  get(): Sequence<Throwable> {
+    return cause?.let { c -> sequenceOf(c) + c.causes } ?: emptySequence()
+  }
+
+class TaskContext @PublishedApi internal constructor(
+  @JvmField val workingDir: Path,
+  logging: ScopeLogging,
+) : ScopeLogging by logging

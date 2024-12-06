@@ -375,16 +375,18 @@ def _run_kt_builder_action(
 
     # unwrap kotlinc_options/javac_options options or default to the ones being provided by the toolchain
     args.add_all("--kotlin_passthrough_flags", kotlinc_options_to_flags(kotlinc_options))
-    args.add_all("--javacopts", javac_options_to_flags(javac_options))
+#     args.add_all("--javacopts", javac_options_to_flags(javac_options))
     args.add_all("--direct_dependencies", _java_infos_to_compile_jars(compile_deps.deps))
     args.add("--strict_kotlin_deps", toolchains.kt.experimental_strict_kotlin_deps)
     args.add_all("--classpath", compile_deps.compile_jars)
     args.add("--reduced_classpath_mode", toolchains.kt.experimental_reduce_classpath_mode)
-    args.add_all("--sources", srcs.all_srcs, omit_if_empty = True)
+    args.add_all("--kotlin_sources", srcs.kt, omit_if_empty = True)
+    args.add_all("--java_sources", srcs.java, omit_if_empty = True)
     args.add_all("--source_jars", srcs.src_jars + generated_src_jars, omit_if_empty = True)
     args.add_all("--deps_artifacts", deps_artifacts, omit_if_empty = True)
     args.add_all("--kotlin_friend_paths", associates.jars, map_each = _associate_utils.flatten_jars)
-    args.add("--instrument_coverage", ctx.coverage_instrumented())
+    if ctx.coverage_instrumented():
+        args.add("--instrument_coverage", True)
 
     # collect and prepare plugin descriptor for the worker
     args.add_all(
@@ -429,7 +431,8 @@ def _run_kt_builder_action(
         omit_if_empty = True,
     )
 
-    args.add("--build_kotlin", build_kotlin)
+    if not build_kotlin:
+        args.add("--build_kotlin", False)
 
     progress_message = "%s %%{label} { kt: %d, java: %d, srcjars: %d } for %s" % (
         mnemonic,

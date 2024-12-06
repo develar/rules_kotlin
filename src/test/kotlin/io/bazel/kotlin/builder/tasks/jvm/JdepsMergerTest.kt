@@ -4,9 +4,9 @@ import com.google.common.truth.Truth.assertThat
 import com.google.devtools.build.lib.view.proto.Deps
 import com.google.devtools.build.lib.view.proto.Deps.Dependency
 import io.bazel.kotlin.builder.tasks.MergeJdeps
-import io.bazel.kotlin.builder.utils.Flag
 import io.bazel.kotlin.builder.utils.jars.JarCreator
 import io.bazel.worker.WorkerContext
+import io.bazel.worker.doTask
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.JUnit4
@@ -72,8 +72,8 @@ class JdepsMergerTest {
 
     val mergedJdeps = out("merged.jdeps")
 
-    val result = WorkerContext.run {
-      doTask("jdepsmerge") { taskCtx ->
+    val result = WorkerContext.run { workerContext ->
+      doTask(workerContext, "jdepsmerge") { taskCtx ->
         MergeJdeps().invoke(
           taskCtx,
           args {
@@ -121,8 +121,8 @@ class JdepsMergerTest {
 
     val mergedJdeps = out("merged.jdeps")
 
-    val result = WorkerContext.run {
-      doTask("jdepsmerge") { taskCtx ->
+    val result = WorkerContext.run { workerContext ->
+      doTask(workerContext, "jdepsmerge") { taskCtx ->
         MergeJdeps().invoke(
           taskCtx,
           args {
@@ -168,8 +168,8 @@ class JdepsMergerTest {
 
     val mergedJdeps = out("merged.jdeps")
 
-    val result = WorkerContext.run {
-      doTask("jdepsmerge") { taskCtx ->
+    val result = WorkerContext.run { workerContext ->
+      doTask(workerContext, "jdepsmerge") { taskCtx ->
         MergeJdeps().invoke(
           taskCtx,
           args {
@@ -219,8 +219,8 @@ class JdepsMergerTest {
     val mergedJdeps = out("merged.jdeps")
 
     val worker = MergeJdeps()
-    val result = WorkerContext.run {
-      doTask("jdepsmerge") { taskCtx ->
+    val result = WorkerContext.run { workerContext ->
+      doTask(workerContext, "jdepsmerge") { taskCtx ->
         worker.invoke(
           taskCtx,
           args {
@@ -267,8 +267,8 @@ class JdepsMergerTest {
 
     val mergedJdeps = out("merged.jdeps")
 
-    val result = WorkerContext.run {
-      doTask("jdepsmerge") { taskCtx ->
+    val result = WorkerContext.run { workerContext ->
+      doTask(workerContext, "jdepsmerge") { taskCtx ->
         MergeJdeps().invoke(
           taskCtx,
           args {
@@ -307,8 +307,8 @@ class JdepsMergerTest {
 
     val mergedJdeps = out("merged.jdeps")
 
-    val result = WorkerContext.run {
-      doTask("jdepsmerge") { taskCtx ->
+    val result = WorkerContext.run { workerContext ->
+      doTask(workerContext, "jdepsmerge") { taskCtx ->
         MergeJdeps().invoke(
           taskCtx,
           args {
@@ -338,14 +338,14 @@ class JdepsMergerTest {
     list()
   }
 
-  class ArgsBuilder(val args: MutableMap<Flag, MutableList<String>> = mutableMapOf()) {
-    fun flag(flag: Flag, value: String) {
+  class ArgsBuilder(val args: MutableMap<JdepsMergerFlags, MutableList<String>> = mutableMapOf()) {
+    fun flag(flag: JdepsMergerFlags, value: String) {
       args[flag] = (args[flag] ?: mutableListOf()).also {
         it.add(value)
       }
     }
 
-    fun flag(flag: Flag, p: Path) {
+    fun flag(flag: JdepsMergerFlags, p: Path) {
       flag(flag, p.toString())
     }
 
@@ -356,7 +356,7 @@ class JdepsMergerTest {
     fun list(): List<String> {
       return args.flatMap { entry ->
         entry.value.flatMap { value ->
-          listOf(entry.key.flag, value)
+          listOf(entry.key.name, value)
         }
       }
     }

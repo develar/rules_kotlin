@@ -56,7 +56,7 @@ private fun doCompileKotlin(
     compilationTask = preprocessedTask,
     context = context,
     compiler = compiler,
-    args = preprocessedTask.baseArgs().given(outputs.jdeps).notEmpty {
+    args = baseArgs(preprocessedTask).given(outputs.jdeps).notEmpty {
       plugin(toolchain.jdepsGen) {
         flag("output", outputs.jdeps!!)
         flag("target_label", preprocessedTask.info.label)
@@ -67,7 +67,7 @@ private fun doCompileKotlin(
       }
     }.given(outputs.jar).notEmpty {
       append(codeGenArgs(preprocessedTask))
-    }.given(outputs.abijar).notEmpty {
+    }.given(outputs.abiJar).notEmpty {
       plugin(toolchain.jvmAbiGen) {
         flag("outputDir", preprocessedTask.directories.abiClasses!!.toString())
       }
@@ -94,10 +94,10 @@ private fun doExecute(
       context.execute("create jar", preprocessedTask::createOutputJar)
     }
   }
-  if (!outputs.abijar.isNullOrEmpty()) {
+  if (!outputs.abiJar.isNullOrEmpty()) {
     context.execute("create abi jar") {
       JarCreator(
-        path = Path.of(preprocessedTask.outputs.abijar),
+        path = Path.of(preprocessedTask.outputs.abiJar),
         targetLabel = preprocessedTask.info.label,
         injectingRuleKind = preprocessedTask.info.bazelRuleKind,
       ).use {

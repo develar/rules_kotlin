@@ -22,10 +22,10 @@ import io.bazel.kotlin.builder.KotlinJvmTestBuilder.JvmCompilationTaskBuilder.Di
 import io.bazel.kotlin.builder.tasks.jvm.KotlinJvmTaskExecutor;
 import io.bazel.kotlin.builder.toolchain.CompilationTaskContext;
 import io.bazel.kotlin.builder.toolchain.KotlinToolchain;
+import io.bazel.kotlin.model.Directories;
+import io.bazel.kotlin.model.Inputs;
 import io.bazel.kotlin.model.JvmCompilationTask;
-import io.bazel.kotlin.model.JvmCompilationTask.Directories;
-import io.bazel.kotlin.model.JvmCompilationTask.Inputs;
-import io.bazel.kotlin.model.JvmCompilationTask.Outputs;
+import io.bazel.kotlin.model.Outputs;
 
 import java.nio.file.Path;
 import java.util.*;
@@ -89,7 +89,6 @@ public final class KotlinJvmTestBuilder extends KotlinAbstractTestBuilder<JvmCom
         .setAbiClasses(directory(DirectoryType.ABI_CLASSES).toAbsolutePath().toString())
         .setGeneratedSources(directory(DirectoryType.SOURCE_GEN).toAbsolutePath().toString())
         .setGeneratedJavaSources(directory(DirectoryType.JAVA_SOURCE_GEN).toAbsolutePath().toString())
-        .setGeneratedStubClasses(directory(DirectoryType.GENERATED_STUBS).toAbsolutePath().toString())
         .setTemp(directory(DirectoryType.TEMP).toAbsolutePath().toString())
         .setGeneratedClasses(directory(DirectoryType.GENERATED_CLASSES).toAbsolutePath().toString())
         .setCoverageMetadataClasses(directory(DirectoryType.COVERAGE_METADATA).toAbsolutePath().toString())
@@ -119,7 +118,7 @@ public final class KotlinJvmTestBuilder extends KotlinAbstractTestBuilder<JvmCom
         Outputs outputs = task.outputs;
         assertFilesExist(
           Stream.of(
-              outputs.abijar,
+              outputs.abiJar,
               outputs.jar,
               outputs.jdeps,
               outputs.srcjar)
@@ -130,7 +129,7 @@ public final class KotlinJvmTestBuilder extends KotlinAbstractTestBuilder<JvmCom
         return Dep.builder()
           .label(taskBuilder.info.label)
           .compileJars(List.of(
-            outputs.abijar.isEmpty() ? outputs.jar : outputs.abijar
+            outputs.abiJar.isEmpty() ? outputs.jar : outputs.abiJar
           ))
           .jdeps(outputs.jdeps)
           .runtimeDeps(List.copyOf(taskBuilder.inputs.classpath))
@@ -416,6 +415,7 @@ public final class KotlinJvmTestBuilder extends KotlinAbstractTestBuilder<JvmCom
 
     public JvmCompilationTask build() {
       return new JvmCompilationTask(
+        "1.8",
         info.build(),
         directories,
         outputs.build(),
@@ -487,7 +487,6 @@ public final class KotlinJvmTestBuilder extends KotlinAbstractTestBuilder<JvmCom
           Path.of(generatedClasses),
           Path.of(generatedSources),
           Path.of(temp),
-          generatedStubClasses,
           Path.of(abiClasses),
           Path.of(generatedJavaSources),
           Path.of(javaClasses),
