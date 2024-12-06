@@ -31,7 +31,7 @@ object Build {
     val toolchain = KotlinToolchain.createToolchain()
     val builder = KotlinBuilder(
       jvmTaskExecutor = KotlinJvmTaskExecutor(
-        compiler = KotlincInvoker(toolchain),
+        compiler = KotlincInvoker(toolchain.toolchainWithReflect()),
         plugins = InternalCompilerPlugins(
           jvmAbiGen = toolchain.jvmAbiGen,
           skipCodeGen = toolchain.skipCodeGen,

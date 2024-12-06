@@ -135,7 +135,6 @@ class KotlinToolchain private constructor(
       )
     }
 
-    @JvmStatic
     fun createToolchain(
       kotlinc: File,
       compiler: File,
@@ -214,23 +213,20 @@ class KotlinToolchain private constructor(
   }
 
   data class CompilerPlugin(
-    val jarPath: String,
-    val id: String,
+    @JvmField val jarPath: String,
+    @JvmField val id: String,
   )
 }
 
 private val lookup = MethodHandles.lookup()
 
-open class KotlinCliToolInvoker internal constructor(
-  toolchain: KotlinToolchain,
-  clazz: String,
-) {
+class KotlincInvoker(toolchain: KotlinToolchain) {
   private val execMethod: MethodHandle
 
   init {
     System.setProperty("zip.handler.uses.crc.instead.of.timestamp", "true")
     execMethod = lookup.findStatic(
-      toolchain.classLoader.loadClass(clazz),
+      toolchain.classLoader.loadClass("io.bazel.kotlin.compiler.BazelK2JVMCompiler"),
       "exec",
       MethodType.methodType(Integer.TYPE, PrintStream::class.java, Array<String>::class.java),
     )
@@ -247,8 +243,3 @@ open class KotlinCliToolInvoker internal constructor(
     return execMethod.invokeExact(out, args) as Int
   }
 }
-
-class KotlincInvoker(toolchain: KotlinToolchain) : KotlinCliToolInvoker(
-  toolchain = toolchain.toolchainWithReflect(),
-  clazz = "io.bazel.kotlin.compiler.BazelK2JVMCompiler",
-)
