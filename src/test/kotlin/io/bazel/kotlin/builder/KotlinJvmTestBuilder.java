@@ -29,6 +29,7 @@ import io.bazel.kotlin.model.JvmCompilationTask.Directories;
 import io.bazel.kotlin.model.JvmCompilationTask.Inputs;
 import io.bazel.kotlin.model.JvmCompilationTask.Outputs;
 
+import java.nio.file.Path;
 import java.util.*;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
@@ -493,15 +494,15 @@ public final class KotlinJvmTestBuilder extends KotlinAbstractTestBuilder<JvmCom
 
       public Directories build() {
         return new Directories(
-          classes,
-          generatedClasses,
-          generatedSources,
-          temp,
+          Path.of(classes),
+          Path.of(generatedClasses),
+          Path.of(generatedSources),
+          Path.of(temp),
           generatedStubClasses,
-          abiClasses,
-          generatedJavaSources,
-          javaClasses,
-          coverageMetadataClasses
+          Path.of(abiClasses),
+          Path.of(generatedJavaSources),
+          Path.of(javaClasses),
+          Path.of(coverageMetadataClasses)
         );
       }
     }

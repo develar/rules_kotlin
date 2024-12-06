@@ -76,7 +76,7 @@ private fun doCompileKotlin(
       append(codeGenArgs(preprocessedTask))
     }.given(outputs.abijar).notEmpty {
       plugin(plugins.jvmAbiGen) {
-        flag("outputDir", preprocessedTask.directories.abiClasses!!)
+        flag("outputDir", preprocessedTask.directories.abiClasses!!.toString())
       }
       given(outputs.jar).empty {
         plugin(plugins.skipCodeGen)
@@ -108,8 +108,8 @@ private fun doExecute(
         targetLabel = preprocessedTask.info.label,
         injectingRuleKind = preprocessedTask.info.bazelRuleKind,
       ).use {
-        it.addDirectory(Path.of(preprocessedTask.directories.abiClasses))
-        it.addDirectory(Path.of(preprocessedTask.directories.generatedClasses))
+        it.addDirectory(preprocessedTask.directories.abiClasses!!)
+        it.addDirectory(preprocessedTask.directories.generatedClasses)
       }
     }
   }
@@ -120,7 +120,7 @@ private fun doExecute(
         targetLabel = preprocessedTask.info.label,
         injectingRuleKind = preprocessedTask.info.bazelRuleKind,
       ).use {
-        it.addDirectory(Path.of(preprocessedTask.directories.generatedJavaSources))
+        it.addDirectory(preprocessedTask.directories.generatedJavaSources)
       }
     }
   }
@@ -142,7 +142,7 @@ private fun doExecute(
         targetLabel = preprocessedTask.info.label,
         injectingRuleKind = preprocessedTask.info.bazelRuleKind,
       ).use {
-        it.addDirectory(Path.of(preprocessedTask.directories.generatedClasses))
+        it.addDirectory(preprocessedTask.directories.generatedClasses)
       }
     }
   }
@@ -153,8 +153,8 @@ private fun doExecute(
         targetLabel = preprocessedTask.info.label,
         injectingRuleKind = preprocessedTask.info.bazelRuleKind,
       ).use {
-        it.addDirectory(Path.of(preprocessedTask.directories.generatedSources))
-        it.addDirectory(Path.of(preprocessedTask.directories.generatedJavaSources))
+        it.addDirectory(preprocessedTask.directories.generatedSources)
+        it.addDirectory(preprocessedTask.directories.generatedJavaSources)
       }
     }
   }

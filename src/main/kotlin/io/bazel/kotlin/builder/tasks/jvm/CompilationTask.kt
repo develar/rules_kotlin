@@ -53,7 +53,7 @@ fun codeGenArgs(compilationTask: JvmCompilationTask): CompilationArgs {
   return CompilationArgs()
     .absolutePaths(compilationTask.info.friendPaths) {
       "-Xfriend-paths=${it.joinToString(X_FRIENDS_PATH_SEPARATOR)}"
-    }.flag("-d", compilationTask.directories.classes)
+    }.flag("-d", compilationTask.directories.classes.toString())
     .values(compilationTask.info.passthroughFlags)
 }
 
@@ -103,14 +103,14 @@ internal fun plugins(
   val dirs = compilationTask.directories
   val optionTokens = mapOf(
     "{generatedClasses}" to dirs.generatedClasses,
-    "{stubs}" to dirs.stubs,
-    "{temp}" to dirs.temp,
+    "{stubs}" to Files.createDirectories(dirs.temp.resolve("stubs")).toString(),
+    "{temp}" to dirs.temp.toString(),
     "{generatedSources}" to dirs.generatedSources,
     "{classpath}" to classpath.joinToString(File.pathSeparator),
   )
   for (opt in options) {
     val formatted = optionTokens.entries.fold(opt) { formatting, (token, value) ->
-      formatting.replace(token, value)
+      formatting.replace(token, value.toString())
     }
     compilationArgs.flag("-P", "plugin:$formatted")
   }
@@ -126,7 +126,7 @@ internal fun preProcessingSteps(
       task
     } else {
       val sourceJarExtractor = SourceJarExtractor(
-        destDir = Path.of(task.directories.temp).resolve(SOURCE_JARS_DIR),
+        destDir = task.directories.temp.resolve(SOURCE_JARS_DIR),
         fileMatcher = { str -> IS_JVM_SOURCE_FILE.test(str) || "/$MANIFEST_DIR" in str },
       )
       sourceJarExtractor.jarFiles.addAll(task.inputs.sourceJars.map { p -> Path.of(p) })
@@ -175,7 +175,7 @@ internal fun JvmCompilationTask.kspArgs(plugins: InternalCompilerPlugins): Compi
 
     for (pair in values) {
       for (value in pair.second) {
-        args.flag(pair.first, value)
+        args.flag(pair.first, value.toString())
       }
     }
   }
@@ -214,7 +214,7 @@ private fun JvmCompilationTask.runKspPlugin(
     )
     baseArgs(overrides)
       .plus(kspArgs(plugins))
-      .flag("-d", directories.generatedClasses)
+      .flag("-d", directories.generatedClasses.toString())
       .values(inputs.kotlinSources)
       .values(inputs.javaSources)
       .list()
@@ -251,9 +251,9 @@ internal fun JvmCompilationTask.createOutputJar() {
     targetLabel = info.label,
     injectingRuleKind = info.bazelRuleKind,
   ).use {
-    it.addDirectory(Path.of(directories.classes))
-    it.addDirectory(Path.of(directories.javaClasses))
-    it.addDirectory(Path.of(directories.generatedClasses))
+    it.addDirectory(directories.classes)
+    it.addDirectory(directories.javaClasses)
+    it.addDirectory(directories.generatedClasses)
   }
 }
 
@@ -289,7 +289,7 @@ fun compileKotlin(
       )
     ).values(inputs.javaSources)
     .values(inputs.kotlinSources)
-    .flag("-d", dirs.classes)
+    .flag("-d", dirs.classes.toString())
     .list()
   context.whenTracing {
     context.printLines("compileKotlin arguments:\n", argList.asSequence())
@@ -306,7 +306,7 @@ fun compileKotlin(
         dirs.temp,
       )
         .flatMap { filePath ->
-          Files.walk(Path.of(filePath)).use { file ->
+          Files.walk(filePath).use { file ->
             file.filter { !Files.isDirectory(it) }.collect(Collectors.toList())
           }
         }
@@ -316,11 +316,8 @@ fun compileKotlin(
   return task
 }
 
-private val Directories.stubs
-  get() = Files.createDirectories(Path.of(temp).resolve("stubs")).toString()
-
 val Directories.incrementalData
-  get() = Files.createDirectories(Path.of(temp).resolve("incrementalData")).toString()
+  get() = Files.createDirectories(temp.resolve("incrementalData")).toString()
 
 /**
  * Create a new [JvmCompilationTask] with sources found in the generatedSources directory.
@@ -331,7 +328,6 @@ fun expandWithGeneratedSources(task: JvmCompilationTask): JvmCompilationTask {
     task,
     Stream
       .of(task.directories.generatedSources, task.directories.generatedJavaSources)
-      .map { s -> Path.of(s) }
       .flatMap { p -> Files.walk(p) }
       .filter { !Files.isDirectory(it) }
       .map { it.toString() }
@@ -360,7 +356,7 @@ private fun expandWithSources(task: JvmCompilationTask, sources: Iterator<String
 /**
  * Copy generated manifest files from KSP task into generated folder
  */
-internal fun copyManifestFilesToGeneratedClasses(
+private fun copyManifestFilesToGeneratedClasses(
   iterator: Iterator<String>,
   directories: Directories,
 ): Iterator<String> {
@@ -368,10 +364,10 @@ internal fun copyManifestFilesToGeneratedClasses(
   for (it in iterator) {
     if ("/$MANIFEST_DIR" in it) {
       val path = Path.of(it)
-      val srcJarsPath = Path.of(directories.temp, SOURCE_JARS_DIR)
+      val srcJarsPath = directories.temp.resolve(SOURCE_JARS_DIR)
       if (Files.exists(srcJarsPath)) {
         val relativePath = srcJarsPath.relativize(path)
-        val destPath = Path.of(directories.generatedClasses).resolve(relativePath)
+        val destPath = directories.generatedClasses.resolve(relativePath)
         destPath.parent.toFile().mkdirs()
         Files.copy(path, destPath, StandardCopyOption.REPLACE_EXISTING)
       }

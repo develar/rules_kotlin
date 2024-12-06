@@ -197,7 +197,7 @@ private fun buildJvmTask(
         workingDir,
         getOutputDirPath(moduleName, "generated_classes"),
       ),
-      temp = resolveNewDirectories(workingDir, getOutputDirPath(moduleName, "temp")),
+      temp = Files.createDirectories(workingDir.resolve(getOutputDirPath(moduleName, "temp"))),
       generatedSources = resolveNewDirectories(
         workingDir,
         getOutputDirPath(moduleName, "generated_sources"),
@@ -241,6 +241,6 @@ private fun getOutputDirPath(
   dirName: String,
 ) = "_kotlinc/${moduleName}_jvm/$dirName"
 
-private fun resolveNewDirectories(file: Path, part: String): String {
-  return Files.createDirectories(file.resolve(part)).toString()
+private fun resolveNewDirectories(file: Path, part: String): Path {
+  return Files.createDirectories(file.resolve(part))
 }

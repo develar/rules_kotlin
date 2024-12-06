@@ -24,7 +24,7 @@ import java.io.PrintStream
 import java.nio.file.Path
 
 class CompilationTaskContext(
-  val info: CompilationTaskInfo,
+  @JvmField val info: CompilationTaskInfo,
   private val out: PrintStream,
   private val executionRoot: String = Path.of("").toAbsolutePath().toString() + File.separator,
 ) {

@@ -5,21 +5,24 @@ import io.bazel.kotlin.builder.utils.jars.JarCreator
 import io.bazel.kotlin.model.JvmCompilationTask
 import org.jacoco.core.instr.Instrumenter
 import org.jacoco.core.runtime.OfflineInstrumentationAccessGenerator
-import java.nio.file.*
+import java.nio.file.FileVisitResult
+import java.nio.file.Files
+import java.nio.file.Path
+import java.nio.file.SimpleFileVisitor
 import java.nio.file.attribute.BasicFileAttributes
 
 internal fun JvmCompilationTask.createCoverageInstrumentedJar() {
-  val instrumentedClassesDirectory = Paths.get(directories.coverageMetadataClasses)
+  val instrumentedClassesDirectory = directories.coverageMetadataClasses!!
   Files.createDirectories(instrumentedClassesDirectory)
 
   val instr = Instrumenter(OfflineInstrumentationAccessGenerator())
 
-  instrumentRecursively(instr, instrumentedClassesDirectory, Path.of(directories.classes))
-  instrumentRecursively(instr, instrumentedClassesDirectory, Path.of(directories.javaClasses))
+  instrumentRecursively(instr, instrumentedClassesDirectory, directories.classes)
+  instrumentRecursively(instr, instrumentedClassesDirectory, directories.javaClasses)
   instrumentRecursively(
     instr,
     instrumentedClassesDirectory,
-    Path.of(directories.generatedClasses),
+    directories.generatedClasses,
   )
 
   val pathsForCoverage =
@@ -36,9 +39,9 @@ internal fun JvmCompilationTask.createCoverageInstrumentedJar() {
     targetLabel = info.label,
     injectingRuleKind = info.bazelRuleKind,
   ).use {
-    it.addDirectory(Path.of(directories.classes))
-    it.addDirectory(Path.of(directories.javaClasses))
-    it.addDirectory(Path.of(directories.generatedClasses))
+    it.addDirectory(directories.classes)
+    it.addDirectory(directories.javaClasses)
+    it.addDirectory(directories.generatedClasses)
     it.addDirectory(instrumentedClassesDirectory)
   }
 }

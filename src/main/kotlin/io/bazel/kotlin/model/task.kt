@@ -1,5 +1,7 @@
 package io.bazel.kotlin.model
 
+import java.nio.file.Path
+
 data class KotlinToolchainInfo(
   @JvmField val languageVersion: String,
   @JvmField val apiVersion: String,
@@ -41,15 +43,15 @@ data class JvmCompilationTask(
   @JvmField val instrumentCoverage: Boolean,
 ) {
   data class Directories(
-    @JvmField val classes: String,
-    @JvmField val generatedClasses: String,
-    @JvmField val generatedSources: String,
-    @JvmField val temp: String,
+    @JvmField val classes: Path,
+    @JvmField val generatedClasses: Path,
+    @JvmField val generatedSources: Path,
+    @JvmField val temp: Path,
     @JvmField val generatedStubClasses: String,
-    @JvmField val abiClasses: String?,
-    @JvmField val generatedJavaSources: String,
-    @JvmField val javaClasses: String,
-    @JvmField val coverageMetadataClasses: String,
+    @JvmField val abiClasses: Path?,
+    @JvmField val generatedJavaSources: Path,
+    @JvmField val javaClasses: Path,
+    @JvmField val coverageMetadataClasses: Path?,
   )
 
   data class Outputs(
