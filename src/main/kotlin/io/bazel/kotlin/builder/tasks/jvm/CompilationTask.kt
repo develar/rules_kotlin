@@ -181,18 +181,23 @@ internal fun JvmCompilationTask.kspArgs(plugins: InternalCompilerPlugins): Compi
     }
   }
 
-internal fun JvmCompilationTask.runPlugins(
+internal fun runPlugins(
+  compilationTask: JvmCompilationTask,
   context: CompilationTaskContext,
   plugins: InternalCompilerPlugins,
   compiler: KotlincInvoker,
 ): JvmCompilationTask {
-  if ((inputs.processorsList.isEmpty() && inputs.stubsPluginClasspathList.isEmpty()) ||
-    inputs.kotlinSourcesList.isEmpty()) {
-    return this
+  if ((compilationTask.inputs.processorsList.isEmpty() && compilationTask.inputs.stubsPluginClasspathList.isEmpty()) ||
+    compilationTask.inputs.kotlinSourcesList.isEmpty()) {
+    return compilationTask
   }
   return when {
-    !outputs.generatedKspSrcJar.isNullOrEmpty() -> runKspPlugin(context, plugins, compiler)
-    else -> this
+    !compilationTask.outputs.generatedKspSrcJar.isNullOrEmpty() -> compilationTask.runKspPlugin(
+      context,
+      plugins,
+      compiler
+    )
+    else -> compilationTask
   }
 }
 
