@@ -38,7 +38,8 @@ class CompilationTaskContext(
   private val start = System.currentTimeMillis()
   private var timings: MutableList<String>?
   private var level = -1
-  private val isTracing: Boolean
+  @PublishedApi
+  internal val isTracing: Boolean
 
   init {
     val debugging = info.debugList.toSet()
@@ -75,12 +76,13 @@ class CompilationTaskContext(
     out.println()
   }
 
-  fun <T> whenTracing(block: CompilationTaskContext.() -> T): T? =
-    if (isTracing) {
+  inline fun <T> whenTracing(block: CompilationTaskContext.() -> T): T? {
+    return if (isTracing) {
       block()
     } else {
       null
     }
+  }
 
   /**
    * Print a proto message if debugging is enabled for the task.
