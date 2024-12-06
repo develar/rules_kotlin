@@ -44,6 +44,12 @@ private const val SOURCE_JARS_DIR = "_srcjars"
 private const val API_VERSION_ARG = "-api-version"
 private const val LANGUAGE_VERSION_ARG = "-language-version"
 
+/**
+ * Due to an inconsistency in the handling of -Xfriends-path, jvm uses a comma (property list
+ * separator)
+ */
+private const val X_FRIENDS_PATH_SEPARATOR = ","
+
 private const val MANIFEST_DIR = "META-INF/"
 
 fun codeGenArgs(compilationTask: JvmCompilationTask): CompilationArgs {

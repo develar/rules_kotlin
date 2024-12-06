@@ -20,14 +20,6 @@ import io.bazel.kotlin.builder.toolchain.CompilationStatusException
 import io.bazel.kotlin.builder.toolchain.CompilationTaskContext
 import io.bazel.kotlin.builder.toolchain.KotlinToolchain
 import io.bazel.kotlin.model.JvmCompilationTask
-import javax.inject.Inject
-import javax.inject.Singleton
-
-/**
- * Due to an inconsistency in the handling of -Xfriends-path, jvm uses a comma (property list
- * separator)
- */
-const val X_FRIENDS_PATH_SEPARATOR = ","
 
 class KotlinJvmTaskExecutor(
     private val compiler: KotlinToolchain.KotlincInvoker,
