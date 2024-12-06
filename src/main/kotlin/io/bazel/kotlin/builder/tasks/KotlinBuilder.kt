@@ -167,112 +167,112 @@ private fun buildJvmTask(
   info: CompilationTaskInfo,
   workingDir: Path,
   argMap: ArgMap,
-): JvmCompilationTask =
-  JvmCompilationTask.newBuilder().let { root ->
-    root.info = info
+): JvmCompilationTask {
+  val root = JvmCompilationTask.newBuilder()
+  root.info = info
 
-    root.compileKotlin = argMap.mandatorySingle(KotlinBuilderFlags.BUILD_KOTLIN).toBoolean()
-    root.instrumentCoverage = argMap
-      .mandatorySingle(KotlinBuilderFlags.INSTRUMENT_COVERAGE).toBoolean()
+  root.compileKotlin = argMap.mandatorySingle(KotlinBuilderFlags.BUILD_KOTLIN).toBoolean()
+  root.instrumentCoverage = argMap
+    .mandatorySingle(KotlinBuilderFlags.INSTRUMENT_COVERAGE).toBoolean()
 
-    with(root.outputsBuilder) {
-      argMap.optionalSingle(KotlinBuilderFlags.OUTPUT)?.let { jar = it }
-      argMap.optionalSingle(KotlinBuilderFlags.OUTPUT_SRCJAR)?.let { srcjar = it }
+  with(root.outputsBuilder) {
+    argMap.optionalSingle(KotlinBuilderFlags.OUTPUT)?.let { jar = it }
+    argMap.optionalSingle(KotlinBuilderFlags.OUTPUT_SRCJAR)?.let { srcjar = it }
 
-      argMap.optionalSingle(KotlinBuilderFlags.OUTPUT_JDEPS)?.apply { jdeps = this }
-      argMap.optionalSingle(KotlinBuilderFlags.GENERATED_JAVA_SRC_JAR)?.apply {
-        generatedJavaSrcJar = this
-      }
-      argMap.optionalSingle(KotlinBuilderFlags.ABI_JAR)?.let { abijar = it }
-      argMap.optionalSingle(KotlinBuilderFlags.KSP_GENERATED_JAVA_SRCJAR)?.let {
-        generatedKspSrcJar = it
-      }
+    argMap.optionalSingle(KotlinBuilderFlags.OUTPUT_JDEPS)?.apply { jdeps = this }
+    argMap.optionalSingle(KotlinBuilderFlags.GENERATED_JAVA_SRC_JAR)?.apply {
+      generatedJavaSrcJar = this
     }
-
-    with(root.directoriesBuilder) {
-      val moduleName = argMap.mandatorySingle(KotlinBuilderFlags.MODULE_NAME)
-      classes =
-        resolveNewDirectories(workingDir, getOutputDirPath(moduleName, "classes")).toString()
-      javaClasses =
-        resolveNewDirectories(
-          workingDir,
-          getOutputDirPath(moduleName, "java_classes"),
-        ).toString()
-      if (argMap.hasAll(KotlinBuilderFlags.ABI_JAR)) {
-        abiClasses =
-          resolveNewDirectories(
-            workingDir,
-            getOutputDirPath(moduleName, "abi_classes"),
-          ).toString()
-      }
-      generatedClasses =
-        resolveNewDirectories(workingDir, getOutputDirPath(moduleName, "generated_classes"))
-          .toString()
-      temp =
-        resolveNewDirectories(
-          workingDir,
-          getOutputDirPath(moduleName, "temp"),
-        ).toString()
-      generatedSources =
-        resolveNewDirectories(workingDir, getOutputDirPath(moduleName, "generated_sources"))
-          .toString()
-      generatedJavaSources =
-        resolveNewDirectories(
-          workingDir,
-          getOutputDirPath(moduleName, "generated_java_sources"),
-        )
-          .toString()
-      generatedStubClasses =
-        resolveNewDirectories(workingDir, getOutputDirPath(moduleName, "stubs")).toString()
-      coverageMetadataClasses =
-        resolveNewDirectories(workingDir, getOutputDirPath(moduleName, "coverage-metadata"))
-          .toString()
+    argMap.optionalSingle(KotlinBuilderFlags.ABI_JAR)?.let { abijar = it }
+    argMap.optionalSingle(KotlinBuilderFlags.KSP_GENERATED_JAVA_SRCJAR)?.let {
+      generatedKspSrcJar = it
     }
-
-    with(root.inputsBuilder) {
-      addAllClasspath(argMap.mandatory(KotlinBuilderFlags.CLASSPATH))
-      addAllDepsArtifacts(
-        argMap.optional(KotlinBuilderFlags.DEPS_ARTIFACTS) ?: emptyList(),
-      )
-      addAllDirectDependencies(argMap.mandatory(KotlinBuilderFlags.DIRECT_DEPENDENCIES))
-
-      addAllProcessors(argMap.optional(KotlinBuilderFlags.PROCESSORS) ?: emptyList())
-      addAllProcessorpaths(argMap.optional(KotlinBuilderFlags.PROCESSOR_PATH) ?: emptyList())
-
-      addAllStubsPluginOptions(
-        argMap.optional(KotlinBuilderFlags.STUBS_PLUGIN_OPTIONS) ?: emptyList(),
-      )
-      addAllStubsPluginClasspath(
-        argMap.optional(KotlinBuilderFlags.STUBS_PLUGIN_CLASS_PATH) ?: emptyList(),
-      )
-
-      addAllCompilerPluginOptions(
-        argMap.optional(KotlinBuilderFlags.COMPILER_PLUGIN_OPTIONS) ?: emptyList(),
-      )
-      addAllCompilerPluginClasspath(
-        argMap.optional(KotlinBuilderFlags.COMPILER_PLUGIN_CLASS_PATH) ?: emptyList(),
-      )
-
-      argMap
-        .optional(KotlinBuilderFlags.SOURCES)
-        ?.iterator()
-        ?.partitionJvmSources(
-          { addKotlinSources(it) },
-          { addJavaSources(it) },
-        )
-      argMap
-        .optional(KotlinBuilderFlags.SOURCE_JARS)
-        ?.also {
-          addAllSourceJars(it)
-        }
-    }
-
-    with(root.infoBuilder) {
-      toolchainInfoBuilder.jvmBuilder.jvmTarget =
-        argMap.mandatorySingle(KotlinBuilderFlags.JVM_TARGET)
-    }
-    root.build()
   }
+
+  with(root.directoriesBuilder) {
+    val moduleName = argMap.mandatorySingle(KotlinBuilderFlags.MODULE_NAME)
+    classes =
+      resolveNewDirectories(workingDir, getOutputDirPath(moduleName, "classes")).toString()
+    javaClasses =
+      resolveNewDirectories(
+        workingDir,
+        getOutputDirPath(moduleName, "java_classes"),
+      ).toString()
+    if (argMap.hasAll(KotlinBuilderFlags.ABI_JAR)) {
+      abiClasses =
+        resolveNewDirectories(
+          workingDir,
+          getOutputDirPath(moduleName, "abi_classes"),
+        ).toString()
+    }
+    generatedClasses =
+      resolveNewDirectories(workingDir, getOutputDirPath(moduleName, "generated_classes"))
+        .toString()
+    temp =
+      resolveNewDirectories(
+        workingDir,
+        getOutputDirPath(moduleName, "temp"),
+      ).toString()
+    generatedSources =
+      resolveNewDirectories(workingDir, getOutputDirPath(moduleName, "generated_sources"))
+        .toString()
+    generatedJavaSources =
+      resolveNewDirectories(
+        workingDir,
+        getOutputDirPath(moduleName, "generated_java_sources"),
+      )
+        .toString()
+    generatedStubClasses =
+      resolveNewDirectories(workingDir, getOutputDirPath(moduleName, "stubs")).toString()
+    coverageMetadataClasses =
+      resolveNewDirectories(workingDir, getOutputDirPath(moduleName, "coverage-metadata"))
+        .toString()
+  }
+
+  with(root.inputsBuilder) {
+    addAllClasspath(argMap.mandatory(KotlinBuilderFlags.CLASSPATH))
+    addAllDepsArtifacts(
+      argMap.optional(KotlinBuilderFlags.DEPS_ARTIFACTS) ?: emptyList(),
+    )
+    addAllDirectDependencies(argMap.mandatory(KotlinBuilderFlags.DIRECT_DEPENDENCIES))
+
+    addAllProcessors(argMap.optional(KotlinBuilderFlags.PROCESSORS) ?: emptyList())
+    addAllProcessorpaths(argMap.optional(KotlinBuilderFlags.PROCESSOR_PATH) ?: emptyList())
+
+    addAllStubsPluginOptions(
+      argMap.optional(KotlinBuilderFlags.STUBS_PLUGIN_OPTIONS) ?: emptyList(),
+    )
+    addAllStubsPluginClasspath(
+      argMap.optional(KotlinBuilderFlags.STUBS_PLUGIN_CLASS_PATH) ?: emptyList(),
+    )
+
+    addAllCompilerPluginOptions(
+      argMap.optional(KotlinBuilderFlags.COMPILER_PLUGIN_OPTIONS) ?: emptyList(),
+    )
+    addAllCompilerPluginClasspath(
+      argMap.optional(KotlinBuilderFlags.COMPILER_PLUGIN_CLASS_PATH) ?: emptyList(),
+    )
+
+    argMap
+      .optional(KotlinBuilderFlags.SOURCES)
+      ?.iterator()
+      ?.partitionJvmSources(
+        { addKotlinSources(it) },
+        { addJavaSources(it) },
+      )
+    argMap
+      .optional(KotlinBuilderFlags.SOURCE_JARS)
+      ?.also {
+        addAllSourceJars(it)
+      }
+  }
+
+  with(root.infoBuilder) {
+    toolchainInfoBuilder.jvmBuilder.jvmTarget =
+      argMap.mandatorySingle(KotlinBuilderFlags.JVM_TARGET)
+  }
+  return root.build()
+}
 
 private fun getOutputDirPath(
   moduleName: String,
