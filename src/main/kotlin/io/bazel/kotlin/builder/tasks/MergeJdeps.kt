@@ -20,7 +20,7 @@ package io.bazel.kotlin.builder.tasks
 import io.bazel.kotlin.builder.tasks.jvm.JdepsMerger
 import io.bazel.kotlin.builder.tasks.jvm.JdepsMergerFlags
 import io.bazel.kotlin.builder.utils.ArgMap
-import io.bazel.kotlin.builder.utils.ArgMaps
+import io.bazel.kotlin.builder.utils.createArgMap
 import io.bazel.worker.Work
 import io.bazel.worker.WorkerContext
 import java.nio.charset.StandardCharsets
@@ -54,6 +54,6 @@ class MergeJdeps : Work {
       Files.readAllLines(FileSystems.getDefault().getPath(it.value), StandardCharsets.UTF_8)
     } ?: args
 
-    return ArgMaps.from(lines)
+    return createArgMap(lines)
   }
 }

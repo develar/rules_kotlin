@@ -20,8 +20,8 @@ import io.bazel.kotlin.builder.tasks.jvm.KotlinJvmTaskExecutor
 import io.bazel.kotlin.builder.toolchain.CompilationStatusException
 import io.bazel.kotlin.builder.toolchain.CompilationTaskContext
 import io.bazel.kotlin.builder.utils.ArgMap
-import io.bazel.kotlin.builder.utils.ArgMaps
 import io.bazel.kotlin.builder.utils.Flag
+import io.bazel.kotlin.builder.utils.createArgMap
 import io.bazel.kotlin.builder.utils.partitionJvmSources
 import io.bazel.kotlin.model.CompilationTaskInfo
 import io.bazel.kotlin.model.JvmCompilationTask
@@ -117,7 +117,7 @@ private fun buildContext(
       Files.readAllLines(FileSystems.getDefault().getPath(it.value), StandardCharsets.UTF_8)
     } ?: args
 
-  val argMap = ArgMaps.from(lines)
+  val argMap = createArgMap(lines)
   val info = buildTaskInfo(argMap).build()
   val context = CompilationTaskContext(info, ctx.asPrintStream())
   return Pair(argMap, context)
