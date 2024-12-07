@@ -346,8 +346,7 @@ def _run_ksp_builder_actions(
         build_kotlin = False,
         mnemonic = "KotlinKsp",
     )
-
-    return struct(ksp_generated_class_jar = ksp_generated_java_srcjar)
+    return ksp_generated_java_srcjar
 
 def _run_kt_builder_action(
         ctx,
@@ -504,8 +503,6 @@ def kt_jvm_produce_jar_actions(ctx, rule_kind):
     toolchain = toolchains.kt
     deps_artifacts = _deps_artifacts(toolchain, ctx.attr.deps + associates.targets)
 
-    generated_src_jars = []
-    annotation_processing = None
     compile_jar = ctx.actions.declare_file(ctx.label.name + ".abi.jar")
 
     outputs_struct = _run_kt_java_builder_actions(
@@ -680,7 +677,7 @@ def _run_kt_java_builder_actions(
 
     # run KSP
     if has_kt_sources and ksp_annotation_processors:
-        ksp_outputs = _run_ksp_builder_actions(
+        ksp_generated_class_jar = _run_ksp_builder_actions(
             ctx,
             rule_kind = rule_kind,
             toolchains = toolchains,
@@ -692,7 +689,7 @@ def _run_kt_java_builder_actions(
             transitive_runtime_jars = transitive_runtime_jars,
             plugins = plugins,
         )
-        generated_ksp_src_jars.append(ksp_outputs.ksp_generated_class_jar)
+        generated_ksp_src_jars.append(ksp_generated_class_jar)
 
     java_infos = []
     outputs = None
