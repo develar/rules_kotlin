@@ -24,6 +24,12 @@ import io.bazel.kotlin.builder.utils.jars.JarCreator
 import io.bazel.kotlin.model.JvmCompilationTask
 import java.nio.file.Path
 
+/**
+ * Due to an inconsistency in the handling of -Xfriends-path, jvm uses a comma (property list
+ * separator)
+ */
+private const val X_FRIENDS_PATH_SEPARATOR = ","
+
 class KotlinJvmTaskExecutor(
   private val toolchain: KotlinToolchain,
 ) {
@@ -33,121 +39,140 @@ class KotlinJvmTaskExecutor(
     context: CompilationTaskContext,
     task: JvmCompilationTask,
   ) {
-    val preprocessedTask = runPlugins(preProcessingSteps(task, context), context, toolchain, compiler)
+    runPlugins(
+      task = task,
+      context = context,
+      plugins = toolchain,
+      compiler = compiler,
+    )
     context.execute("compile classes") {
-      if (preprocessedTask.compileKotlin) {
+      if (task.compileKotlin) {
         context.execute("kotlinc") {
-          doCompileKotlin(preprocessedTask, context, compiler, toolchain)
+          doCompileKotlin(task, context, compiler, toolchain)
         }
       }
-      doExecute(preprocessedTask, context)
+      doExecute(task, context)
     }
   }
 }
 
 private fun doCompileKotlin(
-  preprocessedTask: JvmCompilationTask,
+  task: JvmCompilationTask,
   context: CompilationTaskContext,
   compiler: KotlincInvoker,
   toolchain: KotlinToolchain,
 ) {
-  val outputs = preprocessedTask.outputs
+  val outputs = task.outputs
+
+  val args = baseArgs(task)
+  val inputs = task.inputs
+  outputs.jdeps?.let { jdeps ->
+    args.plugin(toolchain.jdepsGen) {
+      flag("output", jdeps.toString())
+      flag("target_label", task.info.label)
+      inputs.directDependencies.forEach {
+        flag("direct_dependencies", it)
+      }
+      flag("strict_kotlin_deps", task.info.strictKotlinDeps)
+    }
+  }
+  outputs.jar?.let {
+    if (task.friendPaths.isNotEmpty()) {
+      @Suppress("SpellCheckingInspection")
+      args.value("-Xfriend-paths=" + task.friendPaths.joinToString(X_FRIENDS_PATH_SEPARATOR))
+    }
+
+    args.flag("-d", task.directories.classes.toString())
+    args.values(task.info.passthroughFlags)
+  }
+  outputs.abiJar?.let { abiJar ->
+    args.plugin(toolchain.jvmAbiGen) {
+      flag("outputDir", task.directories.abiClasses!!.toString())
+    }
+  }
+
+  if (outputs.jar == null) {
+    args.plugin(toolchain.skipCodeGen)
+  }
+
+  configurePlugins(
+    args = args,
+    task = task,
+    options = inputs.compilerPluginOptions,
+    classpath = inputs.compilerPluginClasspath,
+  )
+
+  args
+    .values(inputs.javaSources)
+    .values(inputs.kotlinSources)
+    .flag("-d", task.directories.classes.toString())
+
   compileKotlin(
-    compilationTask = preprocessedTask,
+    compilationTask = task,
     context = context,
     compiler = compiler,
-    args = baseArgs(preprocessedTask).given(outputs.jdeps).notEmpty {
-      plugin(toolchain.jdepsGen) {
-        flag("output", outputs.jdeps!!)
-        flag("target_label", preprocessedTask.info.label)
-        preprocessedTask.inputs.directDependencies.forEach {
-          flag("direct_dependencies", it)
-        }
-        flag("strict_kotlin_deps", preprocessedTask.info.strictKotlinDeps)
-      }
-    }.given(outputs.jar).notEmpty {
-      append(codeGenArgs(preprocessedTask))
-    }.given(outputs.abiJar).notEmpty {
-      plugin(toolchain.jvmAbiGen) {
-        flag("outputDir", preprocessedTask.directories.abiClasses!!.toString())
-      }
-      given(outputs.jar).empty {
-        plugin(toolchain.skipCodeGen)
-      }
-    },
+    args = args.toList(),
     printOnFail = false,
   )
 }
 
 private fun doExecute(
-  preprocessedTask: JvmCompilationTask,
+  task: JvmCompilationTask,
   context: CompilationTaskContext,
 ) {
-  val outputs = preprocessedTask.outputs
-  if (!outputs.jar.isNullOrEmpty()) {
-    if (preprocessedTask.instrumentCoverage) {
-      context.execute(
-        "create instrumented jar",
-        preprocessedTask::createCoverageInstrumentedJar,
-      )
+  val outputs = task.outputs
+  if (outputs.jar != null) {
+    if (task.instrumentCoverage) {
+      context.execute("create instrumented jar") {
+          createCoverageInstrumentedJar(task)
+      }
     } else {
-      context.execute("create jar", preprocessedTask::createOutputJar)
+      context.execute("create jar") { createOutputJar(task) }
     }
   }
-  if (!outputs.abiJar.isNullOrEmpty()) {
+  if (outputs.abiJar != null) {
     context.execute("create abi jar") {
       JarCreator(
-        path = Path.of(preprocessedTask.outputs.abiJar),
-        targetLabel = preprocessedTask.info.label,
-        injectingRuleKind = preprocessedTask.info.bazelRuleKind,
+        path = outputs.abiJar!!,
+        targetLabel = task.info.label,
+        injectingRuleKind = task.info.bazelRuleKind,
       ).use {
-        it.addDirectory(preprocessedTask.directories.abiClasses!!)
-        it.addDirectory(preprocessedTask.directories.generatedClasses)
+        it.addDirectory(task.directories.abiClasses!!)
+        it.addDirectory(task.directories.generatedClasses)
       }
     }
   }
   if (!outputs.generatedJavaSrcJar.isNullOrEmpty()) {
     context.execute("creating KAPT generated Java source jar") {
       JarCreator(
-        path = Path.of(preprocessedTask.outputs.generatedJavaSrcJar),
-        targetLabel = preprocessedTask.info.label,
-        injectingRuleKind = preprocessedTask.info.bazelRuleKind,
+        path = Path.of(outputs.generatedJavaSrcJar),
+        targetLabel = task.info.label,
+        injectingRuleKind = task.info.bazelRuleKind,
       ).use {
-        it.addDirectory(preprocessedTask.directories.generatedJavaSources)
-      }
-    }
-  }
-  if (!outputs.generatedJavaStubJar.isNullOrEmpty()) {
-    context.execute("creating KAPT generated Kotlin stubs jar") {
-      JarCreator(
-        path = Path.of(preprocessedTask.outputs.generatedJavaStubJar),
-        targetLabel = preprocessedTask.info.label,
-        injectingRuleKind = preprocessedTask.info.bazelRuleKind,
-      ).use {
-        it.addDirectory(Path.of(preprocessedTask.directories.incrementalData))
+        it.addDirectory(task.directories.generatedJavaSources)
       }
     }
   }
   if (!outputs.generatedClassJar.isNullOrEmpty()) {
     context.execute("creating KAPT generated stub class jar") {
       JarCreator(
-        path = Path.of(preprocessedTask.outputs.generatedClassJar),
-        targetLabel = preprocessedTask.info.label,
-        injectingRuleKind = preprocessedTask.info.bazelRuleKind,
+        path = Path.of(outputs.generatedClassJar),
+        targetLabel = task.info.label,
+        injectingRuleKind = task.info.bazelRuleKind,
       ).use {
-        it.addDirectory(preprocessedTask.directories.generatedClasses)
+        it.addDirectory(task.directories.generatedClasses)
       }
     }
   }
-  if (!outputs.generatedKspSrcJar.isNullOrEmpty()) {
+  if (outputs.generatedKspSrcJar != null) {
     context.execute("creating KSP generated src jar") {
       JarCreator(
-        path = Path.of(preprocessedTask.outputs.generatedKspSrcJar),
-        targetLabel = preprocessedTask.info.label,
-        injectingRuleKind = preprocessedTask.info.bazelRuleKind,
+        path = task.outputs.generatedKspSrcJar!!,
+        targetLabel = task.info.label,
+        injectingRuleKind = task.info.bazelRuleKind,
       ).use {
-        it.addDirectory(preprocessedTask.directories.generatedSources)
-        it.addDirectory(preprocessedTask.directories.generatedJavaSources)
+        it.addDirectory(task.directories.generatedSources)
+        it.addDirectory(task.directories.generatedJavaSources)
       }
     }
   }

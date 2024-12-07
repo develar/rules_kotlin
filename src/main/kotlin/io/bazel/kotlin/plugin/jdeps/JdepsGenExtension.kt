@@ -224,7 +224,7 @@ class JdepsGenExtension(
             listOf(callArgument.dataFlowInfoBeforeThisArgument) +
               callArgument.dataFlowInfoAfterThisArgument
 
-          dataFlowInfos.forEach { dataFlowInfo ->
+          for (dataFlowInfo in dataFlowInfos) {
             dataFlowInfo.completeTypeInfo.values().flatten().forEach { kotlinType ->
               collectTypeReferences(kotlinType, isExplicit = true)
             }
@@ -232,7 +232,7 @@ class JdepsGenExtension(
         }
 
         if (callArgument is ExpressionKotlinCallArgument) {
-          callArgument.receiver.allOriginalTypes.forEach { kotlinType ->
+          for (kotlinType in callArgument.receiver.allOriginalTypes) {
             collectTypeReferences(kotlinType, isExplicit = true)
           }
         }

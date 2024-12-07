@@ -51,11 +51,11 @@ internal class PersistentWorker : Worker {
   private val processWorkingDir = Path.of(".").toAbsolutePath().normalize()
 
   override fun start(executeTask: Work): Int {
-    return WorkerContext.run { workerContext ->
+    WorkerContext(name = "worker").use { workerContext ->
       val realStdErr = System.err
       try {
         val workerHandler = WorkRequestHandlerBuilder(
-          WorkRequestCallback { request, pw ->
+          WorkRequestCallback { request, printWriter ->
             val workingDir = request.sandboxDir?.let { processWorkingDir.resolve(it) }
               ?: processWorkingDir
             val result = doTask(
@@ -64,7 +64,7 @@ internal class PersistentWorker : Worker {
               name = "request ${request.requestId}",
               task = { taskContext -> executeTask(taskContext, request.argumentsList) },
             )
-            pw.print(result.log.out.toString())
+            printWriter.print(result.log.out.toString())
             result.status
           },
           realStdErr,
@@ -75,9 +75,9 @@ internal class PersistentWorker : Worker {
       } catch (e: IOException) {
         workerContext.scopeLogging.error(e) { "Unknown IO exception" }
         e.printStackTrace(realStdErr)
-        return@run 1
+        return 1
       }
-      return@run 0
+      return 0
     }
   }
 }

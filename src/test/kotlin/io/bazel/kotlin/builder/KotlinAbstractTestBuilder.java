@@ -252,7 +252,6 @@ abstract class KotlinAbstractTestBuilder<T> {
     private String moduleName;
     private List<String> passthroughFlags;
     KotlinToolchainInfoBuilder toolchainInfo;
-    private List<String> friendPaths;
     private String primaryOutputPath;
     List<String> debug = new ArrayList<>();
     private String strictKotlinDeps;
@@ -288,11 +287,6 @@ abstract class KotlinAbstractTestBuilder<T> {
       return this;
     }
 
-    public CompilationTaskInfoBuilder setFriendPaths(List<String> friendPaths) {
-      this.friendPaths = friendPaths;
-      return this;
-    }
-
     public CompilationTaskInfoBuilder setPrimaryOutputPath(String primaryOutputPath) {
       this.primaryOutputPath = primaryOutputPath;
       return this;
@@ -321,7 +315,6 @@ abstract class KotlinAbstractTestBuilder<T> {
         moduleName,
         passthroughFlags,
         toolchainInfo.build(),
-        friendPaths,
         primaryOutputPath,
         debug,
         strictKotlinDeps,

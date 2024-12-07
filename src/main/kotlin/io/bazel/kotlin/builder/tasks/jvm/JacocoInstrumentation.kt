@@ -11,38 +11,31 @@ import java.nio.file.Path
 import java.nio.file.SimpleFileVisitor
 import java.nio.file.attribute.BasicFileAttributes
 
-internal fun JvmCompilationTask.createCoverageInstrumentedJar() {
-  val instrumentedClassesDirectory = directories.coverageMetadataClasses!!
-  Files.createDirectories(instrumentedClassesDirectory)
+internal fun createCoverageInstrumentedJar(task: JvmCompilationTask) {
+  val instrumentedClassDir = task.directories.coverageMetadataClasses!!
+  clearDirContent(instrumentedClassDir)
 
   val instr = Instrumenter(OfflineInstrumentationAccessGenerator())
 
-  instrumentRecursively(instr, instrumentedClassesDirectory, directories.classes)
-  instrumentRecursively(instr, instrumentedClassesDirectory, directories.javaClasses)
+  instrumentRecursively(instr, instrumentedClassDir, task.directories.classes)
   instrumentRecursively(
     instr,
-    instrumentedClassesDirectory,
-    directories.generatedClasses,
+    instrumentedClassDir,
+    task.directories.generatedClasses,
   )
 
   val pathsForCoverage =
-    instrumentedClassesDirectory.resolve(
-      "${Path.of(outputs.jar).fileName}-paths-for-coverage.txt",
-    )
-  Files.write(
-    pathsForCoverage,
-    inputs.javaSources + inputs.kotlinSources,
-  )
+    instrumentedClassDir.resolve("${task.outputs.jar!!.fileName}-paths-for-coverage.txt")
+  Files.write(pathsForCoverage, task.inputs.javaSources + task.inputs.kotlinSources)
 
   JarCreator(
-    path = Path.of(outputs.jar),
-    targetLabel = info.label,
-    injectingRuleKind = info.bazelRuleKind,
+    path = task.outputs.jar!!,
+    targetLabel = task.info.label,
+    injectingRuleKind = task.info.bazelRuleKind,
   ).use {
-    it.addDirectory(directories.classes)
-    it.addDirectory(directories.javaClasses)
-    it.addDirectory(directories.generatedClasses)
-    it.addDirectory(instrumentedClassesDirectory)
+    it.addDirectory(task.directories.classes)
+    it.addDirectory(task.directories.generatedClasses)
+    it.addDirectory(instrumentedClassDir)
   }
 }
 

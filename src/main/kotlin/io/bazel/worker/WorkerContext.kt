@@ -47,13 +47,10 @@ class WorkerContext @PublishedApi internal constructor(
   companion object {
     inline fun <T : Any?> run(
       named: String = "worker",
-      verbose: Granularity = INFO,
-      report: (ContextLog) -> Unit = {},
       work: (WorkerContext) -> T,
     ): T {
-      val workerContext = WorkerContext(verbose = verbose, name = named)
+      val workerContext = WorkerContext(verbose = INFO, name = named)
       val status = workerContext.use(work)
-      report(workerContext.scopeLogging.contents())
       return status
     }
   }
@@ -72,20 +69,14 @@ inline fun doTask(
 ): TaskResult {
   workerContext.scopeLogging.info { "start task $name" }
   val subLogging = workerContext.scopeLogging.narrowTo(name)
-  val tempDir = Files.createTempDirectory(workingDir, "kotlinc")
   val status = try {
-    try {
-      TaskResult(task(TaskContext(workingDir = tempDir, logging = subLogging)), subLogging.contents())
-    } catch (e: Throwable) {
-      when (e.causes.lastOrNull()) {
-        is InterruptedException, is InterruptedIOException -> subLogging.error(e) { "ERROR: Interrupted" }
-        else -> subLogging.error(e) { "ERROR: unexpected exception" }
-      }
-      TaskResult(1, subLogging.contents())
+    TaskResult(task(TaskContext(workingDir = workingDir, logging = subLogging)), subLogging.contents())
+  } catch (e: Throwable) {
+    when (e.causes.lastOrNull()) {
+      is InterruptedException, is InterruptedIOException -> subLogging.error(e) { "ERROR: Interrupted" }
+      else -> subLogging.error(e) { "ERROR: unexpected exception" }
     }
-  }
-  finally {
-    tempDir.deleteRecursively()
+    TaskResult(1, subLogging.contents())
   }
   workerContext.scopeLogging.info { "end task $name: ${status.status}" }
   return status
@@ -159,5 +150,5 @@ internal val Throwable.causes
 
 class TaskContext @PublishedApi internal constructor(
   @JvmField val workingDir: Path,
-  logging: ScopeLogging,
-) : ScopeLogging by logging
+  @JvmField val logging: ScopeLogging,
+)

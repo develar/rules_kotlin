@@ -28,7 +28,13 @@ object Build {
   fun main(args: Array<String>) {
     val jvmTaskExecutor = KotlinJvmTaskExecutor(KotlinToolchain.createToolchain())
     val status = createWorker(args.asList()).start { taskContext, args ->
-      buildKotlin(taskContext, args, jvmTaskExecutor)
+      buildKotlin(
+        workingDir = taskContext.workingDir,
+        args = args,
+        jvmTaskExecutor = jvmTaskExecutor,
+        out = taskContext.logging.asPrintStream(),
+        logging = taskContext.logging,
+      )
     }
     exitProcess(status)
   }

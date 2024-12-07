@@ -18,7 +18,6 @@
 package io.bazel.worker
 
 import com.google.common.truth.Truth.assertThat
-import io.bazel.worker.ContextLog.Granularity.DEBUG
 import org.junit.Test
 import java.nio.file.Path
 
@@ -28,12 +27,10 @@ class WorkerContextTest {
     var outerLog: List<String> = emptyList()
     val result = WorkerContext.run(
       named = "logging",
-      verbose = DEBUG,
-      report = { log -> outerLog = log.out.split("\n") }
     ) { workerContext ->
       workerContext.scopeLogging.info { "outer context" }
       return@run doTask(Path.of("."), workerContext, "work") { ctx ->
-        ctx.info { "inner context" }
+        ctx.logging.info { "inner context" }
         0
       }
     }

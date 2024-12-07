@@ -17,16 +17,21 @@
 package io.bazel.kotlin.builder.tasks
 
 import io.bazel.kotlin.builder.tasks.jvm.KotlinJvmTaskExecutor
+import io.bazel.kotlin.builder.tasks.jvm.expandWithSources
 import io.bazel.kotlin.builder.toolchain.CompilationStatusException
 import io.bazel.kotlin.builder.toolchain.CompilationTaskContext
 import io.bazel.kotlin.builder.utils.ArgMap
 import io.bazel.kotlin.builder.utils.createArgMap
+import io.bazel.kotlin.builder.utils.jars.SourceJarExtractor
 import io.bazel.kotlin.model.*
-import io.bazel.worker.TaskContext
+import io.bazel.worker.ContextLog.Logging
 import java.io.File
+import java.io.PrintStream
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.regex.Pattern
+import kotlin.io.path.ExperimentalPathApi
+import kotlin.io.path.deleteRecursively
 
 private val FLAG_FILE_RE = Pattern.compile("""^--flagfile=((.*)-(\d+).params)$""").toRegex()
 
@@ -69,8 +74,10 @@ private enum class KotlinBuilderFlags {
 }
 
 fun buildKotlin(
-  taskContext: TaskContext,
+  workingDir: Path,
+  out: PrintStream,
   args: List<String>,
+  logging: Logging,
   jvmTaskExecutor: KotlinJvmTaskExecutor,
 ): Int {
   check(args.isNotEmpty()) {
@@ -87,18 +94,18 @@ fun buildKotlin(
   val compileContext = CompilationTaskContext(
     label = task.label,
     debug = task.debug,
-    out = taskContext.asPrintStream(),
+    out = out,
     executionRoot = Path.of("").toAbsolutePath().toString() + File.separator
   )
   var success = false
   try {
     when (task.platform) {
       Platform.JVM -> {
-        val task = createJvmTask(info = task, workingDir = taskContext.workingDir, args = argMap)
+        val task = createJvmTask(info = task, workingDir = workingDir, args = argMap, context = compileContext)
         compileContext.whenTracing {
           printLines(
             header = "jvm task message:",
-            lines = task.toString().splitToSequence('\n'),
+            lines = formatDataClassToString(task.toString()).splitToSequence('\n'),
             filterEmpty = true,
           )
         }
@@ -109,14 +116,41 @@ fun buildKotlin(
     }
     success = true
   } catch (e: CompilationStatusException) {
-    taskContext.error { "Compilation failure: ${e.message}" }
+    logging.error { "Compilation failure: ${e.message}" }
     return e.status
   } catch (throwable: Throwable) {
-    taskContext.error(throwable) { "Uncaught exception" }
+    logging.error(throwable) { "Uncaught exception" }
   } finally {
     compileContext.finalize(success)
   }
   return 0
+}
+
+private fun formatDataClassToString(input: String): CharSequence {
+  val indentUnit = "  "
+  var currentIndent = ""
+  val result = StringBuilder()
+
+  for (char in input) {
+    when (char) {
+      '{', '[', '(' -> {
+        result.append("$char\n")
+        currentIndent += indentUnit
+        result.append(currentIndent)
+      }
+
+      '}', ']', ')' -> {
+        result.append("\n")
+        currentIndent = currentIndent.dropLast(indentUnit.length)
+        result.append(currentIndent).append(char)
+      }
+
+      ',' -> result.append(",\n").append(currentIndent)
+      else -> result.append(char)
+    }
+  }
+
+  return result
 }
 
 private fun createBuildTask(argMap: ArgMap<KotlinBuilderFlags>): CompilationTaskInfo {
@@ -138,7 +172,6 @@ private fun createBuildTask(argMap: ArgMap<KotlinBuilderFlags>): CompilationTask
       check(it.isNotBlank()) { "--kotlin_module_name should not be blank" }
     },
     passthroughFlags = argMap.optional(KotlinBuilderFlags.KOTLIN_PASSTHROUGH_FLAGS) ?: emptyList(),
-    friendPaths = argMap.optional(KotlinBuilderFlags.KOTLIN_FRIEND_PATHS) ?: emptyList(),
     strictKotlinDeps = argMap.mandatorySingle(KotlinBuilderFlags.STRICT_KOTLIN_DEPS),
     reducedClasspathMode = argMap.mandatorySingle(KotlinBuilderFlags.REDUCED_CLASSPATH_MODE),
     toolchainInfo = KotlinToolchainInfo(
@@ -148,20 +181,72 @@ private fun createBuildTask(argMap: ArgMap<KotlinBuilderFlags>): CompilationTask
   )
 }
 
+@OptIn(ExperimentalPathApi::class)
 private fun createJvmTask(
   info: CompilationTaskInfo,
   workingDir: Path,
   args: ArgMap<KotlinBuilderFlags>,
+  context: CompilationTaskContext,
 ): JvmCompilationTask {
-  val moduleName = args.mandatorySingle(KotlinBuilderFlags.KOTLIN_MODULE_NAME)
+  var outJar = args.optionalSingle(KotlinBuilderFlags.OUTPUT)
+  val generatedKspSrcJar = args.optionalSingle(KotlinBuilderFlags.KSP_GENERATED_JAVA_SRCJAR)
+  if (outJar == null) {
+    outJar = generatedKspSrcJar!!
+  }
+  val jar = workingDir.resolve(outJar)
 
-  val kotlincDir = workingDir.resolve("_kotlinc")
+  val kotlincDir = jar.parent.resolve("_kotlinc")
   Files.createDirectories(kotlincDir)
+  val targetName = jar.fileName.toString().substringBeforeLast(".jar")
 
   fun resolveAndCreate(part: String): Path {
-    val file = kotlincDir.resolve("$moduleName-$part")
-    Files.createDirectory(file)
-    return file
+    val dir = kotlincDir.resolve("$targetName-$part")
+    dir.deleteRecursively()
+    Files.createDirectory(dir)
+    return dir
+  }
+
+  fun resolve(part: String): Path {
+    return kotlincDir.resolve("$targetName-$part")
+  }
+
+  val tempDir = resolve("temp")
+  val generatedClassDir = resolve("generated_classes")
+
+  val sourceJars = args.optional(KotlinBuilderFlags.SOURCE_JARS) ?: emptyList()
+  val kotlinSources: List<String>
+  val javaSources: List<String>
+  if (sourceJars.isEmpty()) {
+    kotlinSources = args.optional(KotlinBuilderFlags.KOTLIN_SOURCES) ?: emptyList()
+    javaSources = args.optional(KotlinBuilderFlags.JAVA_SOURCES) ?: emptyList()
+  } else {
+    val kotlinSourcesMutable = mutableListOf<String>()
+    val javaSourcesMutable = mutableListOf<String>()
+    context.execute("expand sources") {
+      if (!sourceJars.isEmpty()) {
+        val srcJarsDir = tempDir.resolve("src-jars")
+        val sourceJarExtractor = SourceJarExtractor(
+          destDir = srcJarsDir,
+          fileMatcher = { it.endsWith(".kt") || it.endsWith(".java") || it.contains("/META-INF/") },
+        )
+        sourceJarExtractor.jarFiles.addAll(sourceJars.map { p -> Path.of(p) })
+        sourceJarExtractor.execute()
+        expandWithSources(
+          javaSources = kotlinSourcesMutable,
+          kotlinSources = javaSourcesMutable,
+          sources = sourceJarExtractor.sourcesList.iterator(),
+          srcJarsDir = srcJarsDir,
+          generatedClasses = generatedClassDir
+        )
+      }
+    }
+
+    kotlinSources = kotlinSourcesMutable
+    javaSources = javaSourcesMutable
+  }
+
+  fun pathList(list: List<String>): List<Path> {
+    return list.map { workingDir.resolve(it).toAbsolutePath().normalize() }
   }
 
   val root = JvmCompilationTask(
@@ -170,45 +255,41 @@ private fun createJvmTask(
     compileKotlin = args.optionalSingle(KotlinBuilderFlags.BUILD_KOTLIN).let { it == null || it.toBoolean() },
     instrumentCoverage = args.optionalSingle(KotlinBuilderFlags.INSTRUMENT_COVERAGE).toBoolean(),
     outputs = Outputs(
-      jar = args.optionalSingle(KotlinBuilderFlags.OUTPUT),
-      srcjar = args.optionalSingle(KotlinBuilderFlags.KOTLIN_OUTPUT_SRCJAR),
-      jdeps = args.optionalSingle(KotlinBuilderFlags.KOTLIN_OUTPUT_JDEPS),
+      jar = jar,
+      srcjar = args.optionalSingle(KotlinBuilderFlags.KOTLIN_OUTPUT_SRCJAR)?.let { workingDir.resolve(it) },
+      jdeps = args.optionalSingle(KotlinBuilderFlags.KOTLIN_OUTPUT_JDEPS)?.let { workingDir.resolve(it) },
       generatedJavaSrcJar = args.optionalSingle(KotlinBuilderFlags.GENERATED_JAVA_SRCJAR),
-      abiJar = args.optionalSingle(KotlinBuilderFlags.ABI_JAR),
-      generatedKspSrcJar = args.optionalSingle(KotlinBuilderFlags.KSP_GENERATED_JAVA_SRCJAR),
+      abiJar = args.optionalSingle(KotlinBuilderFlags.ABI_JAR)?.let { workingDir.resolve(it) },
+      generatedKspSrcJar = generatedKspSrcJar?.let { workingDir.resolve(it) },
     ),
     directories = Directories(
       classes = resolveAndCreate("classes"),
-      javaClasses = resolveAndCreate("java-classes"),
       abiClasses = if (args.has(KotlinBuilderFlags.ABI_JAR)) {
         resolveAndCreate("abi-classes")
       } else null,
 
-      temp = resolveAndCreate("temp"),
+      temp = tempDir,
+      incrementalData = resolve("incremental"),
 
-      generatedClasses = resolveAndCreate("generated_classes"),
-      generatedSources = resolveAndCreate("generated_sources"),
-      generatedJavaSources = resolveAndCreate("generated_java_sources"),
-      coverageMetadataClasses = resolveAndCreate("coverage-metadata"),
+      generatedClasses = generatedClassDir,
+      generatedSources = resolve("generated_sources"),
+      generatedJavaSources = resolve("generated_java_sources"),
+      coverageMetadataClasses = resolve("coverage-metadata"),
     ),
+    friendPaths = args.optional(KotlinBuilderFlags.KOTLIN_FRIEND_PATHS)?.let { pathList(it) } ?: emptyList(),
     inputs = Inputs(
-      classpath = args.mandatory(KotlinBuilderFlags.CLASSPATH),
+      classpath = pathList(args.mandatory(KotlinBuilderFlags.CLASSPATH)),
       depsArtifacts = args.optional(KotlinBuilderFlags.DEPS_ARTIFACTS) ?: emptyList(),
       directDependencies = args.mandatory(KotlinBuilderFlags.DIRECT_DEPENDENCIES),
       processors = args.optional(KotlinBuilderFlags.PROCESSORS) ?: emptyList(),
       processorPaths = args.optional(KotlinBuilderFlags.PROCESSOR_PATH) ?: emptyList(),
       stubsPluginOptions = args.optional(KotlinBuilderFlags.STUBS_PLUGIN_OPTIONS) ?: emptyList(),
-      stubsPluginClasspath = args.optional(KotlinBuilderFlags.STUBS_PLUGIN_CLASSPATH)
-        ?: emptyList(),
-      compilerPluginOptions = args.optional(KotlinBuilderFlags.COMPILER_PLUGIN_OPTIONS)
-        ?: emptyList(),
-      compilerPluginClasspath = args.optional(KotlinBuilderFlags.COMPILER_PLUGIN_CLASSPATH)
-        ?: emptyList(),
+      stubsPluginClasspath = args.optional(KotlinBuilderFlags.STUBS_PLUGIN_CLASSPATH) ?: emptyList(),
+      compilerPluginOptions = args.optional(KotlinBuilderFlags.COMPILER_PLUGIN_OPTIONS) ?: emptyList(),
+      compilerPluginClasspath = args.optional(KotlinBuilderFlags.COMPILER_PLUGIN_CLASSPATH)?.let { pathList(it) } ?: emptyList(),
 
-      kotlinSources = args.optional(KotlinBuilderFlags.KOTLIN_SOURCES) ?: emptyList(),
-      javaSources = args.optional(KotlinBuilderFlags.JAVA_SOURCES) ?: emptyList(),
-
-      sourceJars = args.optional(KotlinBuilderFlags.SOURCE_JARS) ?: emptyList(),
+      kotlinSources = kotlinSources,
+      javaSources = javaSources,
     ),
   )
   return root

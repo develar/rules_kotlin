@@ -26,7 +26,6 @@ data class CompilationTaskInfo(
   @JvmField val moduleName: String,
   @JvmField val passthroughFlags: List<String>,
   @JvmField val toolchainInfo: KotlinToolchainInfo,
-  @JvmField val friendPaths: List<String>,
   @JvmField val primaryOutputPath: String? = null,
   @JvmField val debug: List<String>,
   @JvmField val strictKotlinDeps: String,
@@ -41,38 +40,38 @@ data class JvmCompilationTask(
   @JvmField val inputs: Inputs,
   @JvmField val compileKotlin: Boolean,
   @JvmField val instrumentCoverage: Boolean,
+
+  @JvmField val friendPaths: List<Path>,
 )
 
 data class Directories(
   @JvmField val classes: Path,
   @JvmField val generatedClasses: Path,
   @JvmField val generatedSources: Path,
+  @JvmField val incrementalData: Path,
   @JvmField val temp: Path,
   @JvmField val abiClasses: Path?,
   @JvmField val generatedJavaSources: Path,
-  @JvmField val javaClasses: Path,
   @JvmField val coverageMetadataClasses: Path?,
 )
 
 data class Outputs(
-  @JvmField val jar: String?,
-  @JvmField val jdeps: String?,
-  @JvmField val srcjar: String?,
-  @JvmField val abiJar: String?,
+  @JvmField val jar: Path?,
+  @JvmField val jdeps: Path?,
+  @JvmField val srcjar: Path?,
+  @JvmField val abiJar: Path?,
   @JvmField val generatedJavaSrcJar: String? = null,
-  @JvmField val generatedJavaStubJar: String? = null,
   @JvmField val generatedClassJar: String? = null,
-  @JvmField val generatedKspSrcJar: String?,
+  @JvmField val generatedKspSrcJar: Path?,
 )
 
 data class Inputs(
-  @JvmField val classpath: List<String>,
+  @JvmField val classpath: List<Path>,
   @JvmField val directDependencies: List<String>,
 
   @JvmField val kotlinSources: List<String>,
   @JvmField val javaSources: List<String>,
 
-  @JvmField val sourceJars: List<String>,
   @JvmField val processors: List<String>,
   @JvmField val processorPaths: List<String>,
   @JvmField val stubsPluginOptions: List<String>,
@@ -80,7 +79,7 @@ data class Inputs(
   @JvmField val stubsPluginClasspath: List<String>,
   @JvmField val compilerPluginOptions: List<String>,
   @JvmField val compilerPlugins: List<String> = emptyList(),
-  @JvmField val compilerPluginClasspath: List<String>,
+  @JvmField val compilerPluginClasspath: List<Path>,
   @JvmField val javacFlags: List<String> = emptyList(),
   @JvmField val depsArtifacts: List<String>,
 )

@@ -87,7 +87,7 @@ class JdepsMerger {
         .toList()
 
       if (unusedLabels.isNotEmpty()) {
-        ctx.info {
+        ctx.logging.info {
           val open = "\u001b[35m\u001b[1m"
           val close = "\u001b[0m"
           return@info """

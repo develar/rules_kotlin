@@ -18,40 +18,13 @@
 package io.bazel.kotlin.builder.tasks.jvm
 
 import io.bazel.kotlin.builder.toolchain.CompilerPlugin
-import java.io.ByteArrayOutputStream
-import java.io.ObjectOutputStream
-import java.nio.file.FileSystem
-import java.nio.file.FileSystems
-import java.nio.file.Path
-import java.util.*
 
 /**
  * CompilationArgs collects the arguments for executing the Kotlin compiler.
  */
 class CompilationArgs(
   val args: MutableList<String> = mutableListOf(),
-  private val dfs: FileSystem = FileSystems.getDefault(),
 ) {
-  class StringConditional(
-    val value: String?,
-    val parent: CompilationArgs,
-  ) {
-    fun notEmpty(conditionalArgs: CompilationArgs.(it: String) -> Unit): CompilationArgs {
-      if (value.isNullOrEmpty()) {
-        return parent
-      }
-      parent.conditionalArgs(value)
-      return parent
-    }
-
-    fun empty(conditionalArgs: CompilationArgs.(it: String?) -> Unit): CompilationArgs {
-      if (value.isNullOrEmpty()) {
-        parent.conditionalArgs(value)
-      }
-      return parent
-    }
-  }
-
   interface SetFlag {
     fun flag(
       name: String,
@@ -79,37 +52,8 @@ class CompilationArgs(
     return this
   }
 
-  fun given(
-    test: Boolean,
-    conditionalArgs: CompilationArgs.() -> Unit,
-  ): CompilationArgs {
-    if (test) {
-      this.conditionalArgs()
-    }
-    return this
-  }
-
-  fun given(value: String?): StringConditional = StringConditional(value, this)
-
   operator fun plus(other: CompilationArgs): CompilationArgs {
     return CompilationArgs((args.asSequence() + other.args.asSequence()).toMutableList())
-  }
-
-  fun absolutePaths(
-    paths: Collection<String>,
-    toArgs: (Sequence<Path>) -> String,
-  ): CompilationArgs {
-    if (paths.isEmpty()) {
-      return this
-    }
-    return value(
-      toArgs(
-        paths
-          .asSequence()
-          .map { dfs.getPath(it) }
-          .map(Path::toAbsolutePath),
-      ),
-    )
   }
 
   fun value(value: String): CompilationArgs {
@@ -158,41 +102,5 @@ class CompilationArgs(
     return this
   }
 
-  fun repeatFlag(
-    flag: String,
-    vararg flagValues: Pair<String, List<String>>,
-    transform: (option: String, value: String) -> String,
-  ): CompilationArgs {
-    flagValues.forEach { (option, optionValues) ->
-      optionValues.forEach {
-        flag(flag, transform(option, it))
-      }
-    }
-    return this
-  }
-
-  fun list(): List<String> = args.toList()
-
-  fun base64Encode(
-    flag: String,
-    vararg values: Pair<String, List<String>>,
-    transform: (String) -> String = { it },
-  ): CompilationArgs {
-    val os = ByteArrayOutputStream()
-    val oos = ObjectOutputStream(os)
-
-    oos.writeInt(values.size)
-    for ((k, vs) in values) {
-      oos.writeUTF(k)
-
-      oos.writeInt(vs.size)
-      for (v in vs) {
-        oos.writeUTF(v)
-      }
-    }
-
-    oos.flush()
-    flag(flag, transform(Base64.getEncoder().encodeToString(os.toByteArray())))
-    return this
-  }
+  fun toList(): List<String> = args.toList()
 }

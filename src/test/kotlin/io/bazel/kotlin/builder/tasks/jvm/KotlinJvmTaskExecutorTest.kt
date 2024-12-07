@@ -38,7 +38,7 @@ class KotlinJvmTaskExecutorTest {
     assertTrue(compileTask.inputs.javaSources.isEmpty())
     assertTrue(compileTask.inputs.kotlinSources.isEmpty())
 
-    val expandedCompileTask = expandWithGeneratedSources(compileTask)
+    val expandedCompileTask = compileTask
 
     assertTrue(compileTask.inputs.javaSources.isEmpty())
     assertTrue(compileTask.inputs.kotlinSources.isEmpty())

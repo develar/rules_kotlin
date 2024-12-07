@@ -31,6 +31,7 @@ import java.nio.file.Path;
 import java.util.*;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public final class KotlinJvmTestBuilder extends KotlinAbstractTestBuilder<JvmCompilationTask> {
@@ -79,7 +80,7 @@ public final class KotlinJvmTestBuilder extends KotlinAbstractTestBuilder<JvmCom
 
     taskBuilder.setInputs(
       new InputsBuilder()
-        .setClasspath(List.of(KOTLIN_STDLIB.singleCompileJar(), KOTLIN_STDLIB_JDK7.singleCompileJar(), KOTLIN_STDLIB_JDK8.singleCompileJar()))
+        .setClasspath(List.of(Path.of(KOTLIN_STDLIB.singleCompileJar()), Path.of(KOTLIN_STDLIB_JDK7.singleCompileJar()), Path.of(KOTLIN_STDLIB_JDK8.singleCompileJar())))
     );
 
     taskBuilder.setDirectories(
@@ -122,18 +123,19 @@ public final class KotlinJvmTestBuilder extends KotlinAbstractTestBuilder<JvmCom
               outputs.jar,
               outputs.jdeps,
               outputs.srcjar)
-            .filter(p -> !p.isEmpty())
+            .filter(p -> p != null)
+            .map(p -> p.toString())
             .toArray(String[]::new)
         );
 
         return Dep.builder()
           .label(taskBuilder.info.label)
           .compileJars(List.of(
-            outputs.abiJar.isEmpty() ? outputs.jar : outputs.abiJar
+            (outputs.abiJar == null ? outputs.jar : outputs.abiJar).toString()
           ))
-          .jdeps(outputs.jdeps)
-          .runtimeDeps(List.copyOf(taskBuilder.inputs.classpath))
-          .sourceJar(taskBuilder.outputs.srcjar)
+          .jdeps(outputs.jdeps.toString())
+          .runtimeDeps(taskBuilder.inputs.classpath.stream().map(Path::toString).collect(Collectors.toList()))
+          .sourceJar(taskBuilder.outputs.srcjar.toString())
           .build();
       });
   }
@@ -143,7 +145,7 @@ public final class KotlinJvmTestBuilder extends KotlinAbstractTestBuilder<JvmCom
   }
 
   public static class InputsBuilder {
-    private List<String> classpath = new ArrayList<>();
+    private List<Path> classpath = new ArrayList<>();
     private List<String> directDependencies = new ArrayList<>();
     private List<String> kotlinSources = new ArrayList<>();
     private List<String> javaSources = new ArrayList<>();
@@ -155,11 +157,11 @@ public final class KotlinJvmTestBuilder extends KotlinAbstractTestBuilder<JvmCom
     private List<String> stubsPluginClasspath = new ArrayList<>();
     private List<String> compilerPluginOptions = new ArrayList<>();
     private List<String> compilerPlugins = new ArrayList<>();
-    private List<String> compilerPluginClasspath = new ArrayList<>();
+    private List<Path> compilerPluginClasspath = new ArrayList<>();
     private List<String> javacFlags = new ArrayList<>();
     private List<String> depsArtifacts = new ArrayList<>();
 
-    public InputsBuilder setClasspath(List<String> classpath) {
+    public InputsBuilder setClasspath(List<Path> classpath) {
       this.classpath = classpath;
       return this;
     }
@@ -219,7 +221,7 @@ public final class KotlinJvmTestBuilder extends KotlinAbstractTestBuilder<JvmCom
       return this;
     }
 
-    public InputsBuilder setCompilerPluginClasspath(List<String> compilerPluginClasspath) {
+    public InputsBuilder setCompilerPluginClasspath(List<Path> compilerPluginClasspath) {
       this.compilerPluginClasspath = compilerPluginClasspath;
       return this;
     }
@@ -240,7 +242,6 @@ public final class KotlinJvmTestBuilder extends KotlinAbstractTestBuilder<JvmCom
         directDependencies,
         kotlinSources,
         javaSources,
-        sourceJars,
         processors,
         processorpaths,
         stubsPluginOptions,
@@ -311,32 +312,32 @@ public final class KotlinJvmTestBuilder extends KotlinAbstractTestBuilder<JvmCom
 
     public void addDirectDependencies(Dep... dependencies) {
       Dep.classpathOf(dependencies).forEach(dependency -> {
-        taskBuilder.inputs.classpath.add(dependency);
+        taskBuilder.inputs.classpath.add(Path.of(dependency));
         taskBuilder.inputs.directDependencies.add(dependency);
       });
     }
 
     public void addTransitiveDependencies(Dep... dependencies) {
       Dep.classpathOf(dependencies).forEach(dependency -> {
-        taskBuilder.inputs.classpath.add(dependency);
+        taskBuilder.inputs.classpath.add(Path.of(dependency));
       });
     }
 
     public TaskBuilder outputSrcJar() {
       taskBuilder.outputs
-        .setSrcjar(instanceRoot().resolve("jar_file-sources.jar").toAbsolutePath().toString());
+        .setSrcjar(instanceRoot().resolve("jar_file-sources.jar").toAbsolutePath());
       return this;
     }
 
     public TaskBuilder outputJar() {
       taskBuilder.outputs
-        .setJar(instanceRoot().resolve("jar_file.jar").toAbsolutePath().toString());
+        .setJar(instanceRoot().resolve("jar_file.jar").toAbsolutePath());
       return this;
     }
 
     public TaskBuilder outputJdeps() {
       taskBuilder.outputs
-        .setJdeps(instanceRoot().resolve("jdeps_file.jdeps").toAbsolutePath().toString());
+        .setJdeps(instanceRoot().resolve("jdeps_file.jdeps").toAbsolutePath());
       return this;
     }
 
@@ -347,19 +348,13 @@ public final class KotlinJvmTestBuilder extends KotlinAbstractTestBuilder<JvmCom
 
     public TaskBuilder outputAbiJar() {
       taskBuilder.outputs
-        .setAbijar(instanceRoot().resolve("abi.jar").toAbsolutePath().toString());
+        .setAbijar(instanceRoot().resolve("abi.jar").toAbsolutePath());
       return this;
     }
 
     public TaskBuilder generatedSourceJar() {
       taskBuilder.outputs
         .setGeneratedJavaSrcJar(instanceRoot().resolve("gen-src.jar").toAbsolutePath().toString());
-      return this;
-    }
-
-    public TaskBuilder ktStubsJar() {
-      taskBuilder.outputs
-        .setGeneratedJavaStubJar(instanceRoot().resolve("kt-stubs.jar").toAbsolutePath().toString());
       return this;
     }
 
@@ -421,7 +416,8 @@ public final class KotlinJvmTestBuilder extends KotlinAbstractTestBuilder<JvmCom
         outputs.build(),
         inputs.build(),
         compileKotlin,
-        instrumentCoverage
+        instrumentCoverage,
+        List.of()
       );
     }
 
@@ -487,8 +483,8 @@ public final class KotlinJvmTestBuilder extends KotlinAbstractTestBuilder<JvmCom
           Path.of(generatedClasses),
           Path.of(generatedSources),
           Path.of(temp),
+          Path.of(temp),
           Path.of(abiClasses),
-          Path.of(generatedJavaSources),
           Path.of(javaClasses),
           Path.of(coverageMetadataClasses)
         );
@@ -496,31 +492,30 @@ public final class KotlinJvmTestBuilder extends KotlinAbstractTestBuilder<JvmCom
     }
 
     public static class OutputsBuilder {
-      private String jar;
-      private String jdeps;
-      private String srcjar;
-      private String abijar;
+      private Path jar;
+      private Path jdeps;
+      private Path srcjar;
+      private Path abijar;
       private String generatedJavaSrcJar;
-      private String generatedJavaStubJar;
       private String generatedClassJar;
-      private String generatedKspSrcJar;
+      private Path generatedKspSrcJar;
 
-      public OutputsBuilder setJar(String jar) {
+      public OutputsBuilder setJar(Path jar) {
         this.jar = jar;
         return this;
       }
 
-      public OutputsBuilder setJdeps(String jdeps) {
+      public OutputsBuilder setJdeps(Path jdeps) {
         this.jdeps = jdeps;
         return this;
       }
 
-      public OutputsBuilder setSrcjar(String srcjar) {
+      public OutputsBuilder setSrcjar(Path srcjar) {
         this.srcjar = srcjar;
         return this;
       }
 
-      public OutputsBuilder setAbijar(String abijar) {
+      public OutputsBuilder setAbijar(Path abijar) {
         this.abijar = abijar;
         return this;
       }
@@ -530,17 +525,12 @@ public final class KotlinJvmTestBuilder extends KotlinAbstractTestBuilder<JvmCom
         return this;
       }
 
-      public OutputsBuilder setGeneratedJavaStubJar(String generatedJavaStubJar) {
-        this.generatedJavaStubJar = generatedJavaStubJar;
-        return this;
-      }
-
       public OutputsBuilder setGeneratedClassJar(String generatedClassJar) {
         this.generatedClassJar = generatedClassJar;
         return this;
       }
 
-      public OutputsBuilder setGeneratedKspSrcJar(String generatedKspSrcJar) {
+      public OutputsBuilder setGeneratedKspSrcJar(Path generatedKspSrcJar) {
         this.generatedKspSrcJar = generatedKspSrcJar;
         return this;
       }
@@ -552,7 +542,6 @@ public final class KotlinJvmTestBuilder extends KotlinAbstractTestBuilder<JvmCom
           srcjar,
           abijar,
           generatedJavaSrcJar,
-          generatedJavaStubJar,
           generatedClassJar,
           generatedKspSrcJar
         );
