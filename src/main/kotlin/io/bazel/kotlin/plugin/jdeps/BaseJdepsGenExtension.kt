@@ -5,9 +5,8 @@ import io.bazel.kotlin.builder.utils.jars.JarOwner
 import org.jetbrains.kotlin.config.CompilerConfiguration
 import java.nio.file.Files
 import java.nio.file.Path
-import java.nio.file.Paths
 
-abstract class BaseJdepsGenExtension(
+sealed class BaseJdepsGenExtension(
   protected val configuration: CompilerConfiguration,
 ) {
   protected fun onAnalysisCompleted(
@@ -39,7 +38,7 @@ abstract class BaseJdepsGenExtension(
  * Returns a map of jars to classes loaded from those jars.
  */
 private fun createDepsMap(classes: Set<String>): Map<String, List<String>> {
-  val jarsToClasses = mutableMapOf<String, MutableList<String>>()
+  val jarsToClasses = HashMap<String, MutableList<String>>()
   for (aClass in classes) {
     val parts = aClass.split("!/")
     val jarPath = parts[0]
@@ -59,36 +58,39 @@ private fun doWriteJdeps(
 ) {
   val implicitDeps = createDepsMap(implicitClassesCanonicalPaths)
 
-  // Build and write out deps.proto
-  val jdepsOutput = configuration.getNotNull(JdepsGenConfigurationKeys.OUTPUT_JDEPS)
-
-  val rootBuilder = Deps.Dependencies.newBuilder()
-  rootBuilder.success = true
-  rootBuilder.ruleLabel = targetLabel
+  val deps = mutableListOf<Deps.Dependency>()
 
   val unusedDeps = directDeps.subtract(explicitDeps.keys)
   for (jarPath in unusedDeps) {
     val dependency = Deps.Dependency.newBuilder()
     dependency.kind = Deps.Dependency.Kind.UNUSED
     dependency.path = jarPath
-    rootBuilder.addDependency(dependency)
+    deps.add(dependency.build())
   }
 
   for ((jarPath, _) in explicitDeps) {
     val dependency = Deps.Dependency.newBuilder()
     dependency.kind = Deps.Dependency.Kind.EXPLICIT
     dependency.path = jarPath
-    rootBuilder.addDependency(dependency)
+    deps.add(dependency.build())
   }
 
-  implicitDeps.keys.subtract(explicitDeps.keys).forEach {
+  for (path in implicitDeps.keys.subtract(explicitDeps.keys)) {
     val dependency = Deps.Dependency.newBuilder()
     dependency.kind = Deps.Dependency.Kind.IMPLICIT
-    dependency.path = it
-    rootBuilder.addDependency(dependency)
+    dependency.path = path
+    deps.add(dependency.build())
   }
 
-  Files.write(Path.of(jdepsOutput), rootBuilder.buildSorted().toByteArray())
+  val rootBuilder = Deps.Dependencies.newBuilder()
+  rootBuilder.success = true
+  rootBuilder.ruleLabel = targetLabel
+
+  deps.sortBy { it.path }
+  rootBuilder.addAllDependency(deps)
+  // build and write out deps.proto
+  val jdepsOutput = configuration.getNotNull(JdepsGenConfigurationKeys.OUTPUT_JDEPS)
+  Files.write(Path.of(jdepsOutput), rootBuilder.build().toByteArray())
 }
 
 private fun doStrictDeps(
@@ -100,10 +102,8 @@ private fun doStrictDeps(
   when (compilerConfiguration.getNotNull(JdepsGenConfigurationKeys.STRICT_KOTLIN_DEPS)) {
     "warn" -> checkStrictDeps(explicitDeps, directDeps, targetLabel)
     "error" -> {
-      if (checkStrictDeps(explicitDeps, directDeps, targetLabel)) {
-        error(
-          "Strict Deps Violations - please fix",
-        )
+      require(!checkStrictDeps(explicitDeps, directDeps, targetLabel)) {
+        "Strict Deps Violations - please fix"
       }
     }
   }
@@ -118,12 +118,15 @@ private fun checkStrictDeps(
   targetLabel: String,
 ): Boolean {
   val missingStrictDeps = result.keys
+    .asSequence()
     .filter { !directDeps.contains(it) }
-    .map { JarOwner.readJarOwnerFromManifest(Paths.get(it)) }
+    .map { JarOwner.readJarOwnerFromManifest(Path.of(it)) }
+    .toList()
 
   if (missingStrictDeps.isEmpty()) {
     return false
   }
+
   val missingStrictLabels = missingStrictDeps.mapNotNull { it.label }
 
   val open = "\u001b[35m\u001b[1m"
@@ -149,10 +152,3 @@ private fun checkStrictDeps(
   return true
 }
 
-private fun Deps.Dependencies.Builder.buildSorted(): Deps.Dependencies {
-  val sortedDeps = dependencyList.sortedBy { it.path }
-  for ((index, dep) in sortedDeps.withIndex()) {
-    setDependency(index, dep)
-  }
-  return build()
-}
