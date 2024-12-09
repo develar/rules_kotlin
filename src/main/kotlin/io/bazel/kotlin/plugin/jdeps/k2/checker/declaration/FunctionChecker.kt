@@ -6,6 +6,7 @@ import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirFunctionChecker
 import org.jetbrains.kotlin.fir.declarations.FirFunction
+import org.jetbrains.kotlin.name.ClassId
 
 internal class FunctionChecker(
   private val classUsageRecorder: ClassUsageRecorder,
@@ -20,7 +21,7 @@ internal class FunctionChecker(
     reporter: DiagnosticReporter,
   ) {
     // function parameters
-    declaration.valueParameters.forEach { valueParam ->
+    for (valueParam in declaration.valueParameters) {
       valueParam.returnTypeRef.let { classUsageRecorder.recordTypeRef(it, context) }
     }
   }

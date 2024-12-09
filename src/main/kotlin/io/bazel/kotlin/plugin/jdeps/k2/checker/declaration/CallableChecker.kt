@@ -8,6 +8,7 @@ import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirCallableDeclara
 import org.jetbrains.kotlin.fir.declarations.FirAnonymousFunction
 import org.jetbrains.kotlin.fir.declarations.FirCallableDeclaration
 import org.jetbrains.kotlin.fir.declarations.utils.isExtension
+import org.jetbrains.kotlin.name.ClassId
 
 internal class CallableChecker(
   private val classUsageRecorder: ClassUsageRecorder,
@@ -21,20 +22,36 @@ internal class CallableChecker(
     context: CheckerContext,
     reporter: DiagnosticReporter,
   ) {
+    val visited = HashSet<Pair<ClassId, Boolean>>()
     // return type
-    declaration.returnTypeRef.let { classUsageRecorder.recordTypeRef(it, context) }
+    classUsageRecorder.recordTypeRef(
+      typeRef = declaration.returnTypeRef,
+      context = context,
+      visited = visited,
+    )
 
     // type params
-    declaration.typeParameters.forEach { typeParam ->
-      typeParam.symbol.resolvedBounds.forEach { typeParamBound ->
-        typeParamBound.let { classUsageRecorder.recordTypeRef(it, context) }
+    for (typeParam in declaration.typeParameters) {
+      for (typeParamBound in typeParam.symbol.resolvedBounds) {
+        visited.clear()
+        classUsageRecorder.recordTypeRef(
+          typeRef = typeParamBound,
+          context = context,
+          visited = visited,
+        )
       }
     }
 
     // receiver param for extensions
     if (declaration !is FirAnonymousFunction) {
       declaration.receiverParameter?.typeRef?.let {
-        classUsageRecorder.recordTypeRef(it, context, isExplicit = declaration.isExtension)
+        visited.clear()
+        classUsageRecorder.recordTypeRef(
+          typeRef = it,
+          context = context,
+          isExplicit = declaration.isExtension,
+          visited = visited,
+        )
       }
     }
   }

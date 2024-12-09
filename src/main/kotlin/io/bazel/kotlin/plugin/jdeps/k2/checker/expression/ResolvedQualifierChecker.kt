@@ -17,7 +17,7 @@ internal class ResolvedQualifierChecker(
     reporter: DiagnosticReporter,
   ) {
     expression.symbol?.let {
-      classUsageRecorder.recordClass(it, context)
+      classUsageRecorder.recordClass(firClass = it, context = context)
     }
   }
 }

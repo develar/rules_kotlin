@@ -27,15 +27,15 @@ internal class QualifiedAccessChecker(
     // track function's owning class
     val resolvedCallableSymbol = expression.toResolvedCallableSymbol()
     resolvedCallableSymbol?.containerSource?.binaryClass()?.let {
-      classUsageRecorder.recordClass(it)
+      classUsageRecorder.addClass(path = it, isExplicit = true)
     }
 
     // track return type
-    val isExplicitReturnType: Boolean = expression is FirConstructor
+    val isExplicitReturnType = expression is FirConstructor
     resolvedCallableSymbol?.resolvedReturnTypeRef?.let {
       classUsageRecorder.recordTypeRef(
-        it,
-        context,
+        typeRef = it,
+        context = context,
         isExplicit = isExplicitReturnType,
         collectTypeArguments = false,
       )
@@ -52,18 +52,26 @@ internal class QualifiedAccessChecker(
       ?.valueParameterSymbols
       ?.forEach { valueParam ->
         valueParam.resolvedReturnTypeRef.let {
-          classUsageRecorder.recordTypeRef(it, context, isExplicit = false)
+          classUsageRecorder.recordTypeRef(typeRef = it, context = context, isExplicit = false)
         }
       }
     // track fun arguments actually passed
     (expression as? FirFunctionCall)?.arguments?.map { it.resolvedType }?.forEach {
-      classUsageRecorder.recordConeType(it, context, isExplicit = !it.isExtensionFunctionType)
+      classUsageRecorder.recordConeType(
+        coneKotlinType = it,
+        context = context,
+        isExplicit = !it.isExtensionFunctionType,
+      )
     }
 
     // track dispatch receiver
     expression.dispatchReceiver?.resolvedType?.let {
       if (!it.isUnit) {
-        classUsageRecorder.recordConeType(it, context, isExplicit = false)
+        classUsageRecorder.recordConeType(
+          coneKotlinType = it,
+          context = context,
+          isExplicit = false,
+        )
       }
     }
   }

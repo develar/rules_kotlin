@@ -28,9 +28,15 @@ internal class ClassUsageRecorder(
     context: CheckerContext,
     isExplicit: Boolean = true,
     collectTypeArguments: Boolean = true,
-    visited: MutableSet<Pair<ClassId, Boolean>> = mutableSetOf(),
+    visited: MutableSet<Pair<ClassId, Boolean>> = HashSet(),
   ) {
-    recordConeType(typeRef.coneType, context, isExplicit, collectTypeArguments, visited)
+    recordConeType(
+      coneKotlinType = typeRef.coneType,
+      context = context,
+      isExplicit = isExplicit,
+      collectTypeArguments = collectTypeArguments,
+      visited = visited,
+    )
   }
 
   internal fun recordConeType(
@@ -38,7 +44,7 @@ internal class ClassUsageRecorder(
     context: CheckerContext,
     isExplicit: Boolean = true,
     collectTypeArguments: Boolean = true,
-    visited: MutableSet<Pair<ClassId, Boolean>> = mutableSetOf(),
+    visited: MutableSet<Pair<ClassId, Boolean>> = HashSet(),
   ) {
     if (collectTypeArguments) {
       coneKotlinType.forEachType(
@@ -61,13 +67,15 @@ internal class ClassUsageRecorder(
         if (!classId.isLocal) {
           context.session.symbolProvider
             .getClassLikeSymbolByClassId(classId)
-            ?.let { recordClass(
-              firClass = it,
-              context = context,
-              isExplicit = isExplicit,
-              collectTypeArguments = false,
-              visited = visited
-            ) }
+            ?.let {
+              recordClass(
+                firClass = it,
+                context = context,
+                isExplicit = isExplicit,
+                collectTypeArguments = false,
+                visited = visited,
+              )
+            }
         }
       }
     }
@@ -78,14 +86,14 @@ internal class ClassUsageRecorder(
     context: CheckerContext,
     isExplicit: Boolean = true,
     collectTypeArguments: Boolean = true,
-    visited: MutableSet<Pair<ClassId, Boolean>>,
+    visited: MutableSet<Pair<ClassId, Boolean>> = HashSet(),
   ) {
     val classIdAndIsExplicit = firClass.classId to isExplicit
     if (!visited.add(classIdAndIsExplicit)) {
       return
     }
 
-    firClass.sourceElement?.binaryClass()?.let { recordClass(path = it, isExplicit = isExplicit) }
+    firClass.sourceElement?.binaryClass()?.let { addClass(path = it, isExplicit = isExplicit) }
 
     if (firClass is FirClassSymbol<*>) {
       for (typeRef in firClass.resolvedSuperTypeRefs) {
@@ -114,7 +122,7 @@ internal class ClassUsageRecorder(
     }
   }
 
-  internal fun recordClass(
+  internal fun addClass(
     path: String,
     isExplicit: Boolean,
   ) {

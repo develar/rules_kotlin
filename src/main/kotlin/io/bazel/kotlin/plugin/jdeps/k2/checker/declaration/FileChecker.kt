@@ -29,21 +29,24 @@ internal class FileChecker(
     context: CheckerContext,
     reporter: DiagnosticReporter,
   ) {
-    declaration.imports.filterIsInstance<FirResolvedImport>().forEach { import ->
+    val visited = HashSet<Pair<ClassId, Boolean>>()
+    for (import in declaration.imports.filterIsInstance<FirResolvedImport>()) {
       // check for classlike import (class, interface, object, enum, annotation, etc)
       if (import.resolvesToClass(context)) {
         import.classId()?.resolveToClass(context)?.let {
-          classUsageRecorder.recordClass(it, context)
+          visited.clear()
+          classUsageRecorder.recordClass(firClass = it, context = context, visited = visited)
         }
       } else {
         // check for function import
         val callableBinaryClass = import.resolveToFun(context)?.containerSource?.binaryClass()
         if (callableBinaryClass != null) {
-          classUsageRecorder.recordClass(callableBinaryClass)
+          classUsageRecorder.addClass(path = callableBinaryClass, isExplicit = true)
         } else {
           // for other symbols, track the parent class
           import.resolvedParentClassId?.resolveToClass(context)?.let {
-            classUsageRecorder.recordClass(it, context)
+            visited.clear()
+            classUsageRecorder.recordClass(firClass = it, context = context, visited = visited)
           }
         }
       }
@@ -54,11 +57,12 @@ internal class FileChecker(
 @Suppress("ReturnCount")
 private fun FirResolvedImport.resolveToFun(context: CheckerContext): FirCallableSymbol<*>? {
   val funName = this.importedName ?: return null
-  val topLevelFun =
-    context.session.symbolProvider
-      .getTopLevelCallableSymbols(packageFqName, funName)
-      .firstOrNull()
-  if (topLevelFun != null) return topLevelFun
+  val topLevelFun = context.session.symbolProvider
+    .getTopLevelCallableSymbols(packageFqName, funName)
+    .firstOrNull()
+  if (topLevelFun != null) {
+    return topLevelFun
+  }
 
   val parentClassId = resolvedParentClassId ?: return null
   return context.session.getClassDeclaredMemberScope(parentClassId)
