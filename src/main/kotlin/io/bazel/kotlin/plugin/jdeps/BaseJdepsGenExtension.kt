@@ -3,8 +3,8 @@ package io.bazel.kotlin.plugin.jdeps
 import com.google.devtools.build.lib.view.proto.Deps
 import io.bazel.kotlin.builder.utils.jars.JarOwner
 import org.jetbrains.kotlin.config.CompilerConfiguration
-import java.io.BufferedOutputStream
-import java.io.File
+import java.nio.file.Files
+import java.nio.file.Path
 import java.nio.file.Paths
 
 abstract class BaseJdepsGenExtension(
@@ -40,8 +40,8 @@ abstract class BaseJdepsGenExtension(
  */
 private fun createDepsMap(classes: Set<String>): Map<String, List<String>> {
   val jarsToClasses = mutableMapOf<String, MutableList<String>>()
-  classes.forEach {
-    val parts = it.split("!/")
+  for (aClass in classes) {
+    val parts = aClass.split("!/")
     val jarPath = parts[0]
     if (jarPath.endsWith(".jar")) {
       jarsToClasses.computeIfAbsent(jarPath) { ArrayList() }.add(parts[1])
@@ -67,14 +67,14 @@ private fun doWriteJdeps(
   rootBuilder.ruleLabel = targetLabel
 
   val unusedDeps = directDeps.subtract(explicitDeps.keys)
-  unusedDeps.forEach { jarPath ->
+  for (jarPath in unusedDeps) {
     val dependency = Deps.Dependency.newBuilder()
     dependency.kind = Deps.Dependency.Kind.UNUSED
     dependency.path = jarPath
     rootBuilder.addDependency(dependency)
   }
 
-  explicitDeps.forEach { (jarPath, _) ->
+  for ((jarPath, _) in explicitDeps) {
     val dependency = Deps.Dependency.newBuilder()
     dependency.kind = Deps.Dependency.Kind.EXPLICIT
     dependency.path = jarPath
@@ -88,9 +88,7 @@ private fun doWriteJdeps(
     rootBuilder.addDependency(dependency)
   }
 
-  BufferedOutputStream(File(jdepsOutput).outputStream()).use {
-    it.write(rootBuilder.buildSorted().toByteArray())
-  }
+  Files.write(Path.of(jdepsOutput), rootBuilder.buildSorted().toByteArray())
 }
 
 private fun doStrictDeps(
