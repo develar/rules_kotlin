@@ -197,8 +197,8 @@ private fun runKspPlugin(
       .values(task.inputs.javaSources)
       .toList()
     val outputLines = context.executeCompilerTask(
-      args,
-      compiler::compile,
+      args = args,
+      compiler = compiler,
       printOnSuccess = context.isTracing,
     )
     // if tracing is enabled, the output should be formatted in a special way, if we aren't
@@ -252,11 +252,11 @@ fun compileKotlin(
   }
   val output = context.executeCompilerTask(
     args = args,
-    compile = compiler::compile,
+    compiler = compiler,
     printOnFail = printOnFail,
   )
-  context.whenTracing {
-    printLines(
+  if (context.isTracing) {
+    context.printLines(
       "kotlinc Files Created:",
       sequenceOf(
         dirs.classes,

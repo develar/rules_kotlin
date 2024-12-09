@@ -159,9 +159,9 @@ class KotlincInvoker(baseJars: List<Path>) {
   // 2 is an internal error
   // 3 is the script execution error
   fun compile(
-    args: Array<String>,
+    args: List<String>,
     out: PrintStream,
   ): Int {
-    return execMethod.invokeExact(out, args) as Int
+    return execMethod.invokeExact(out, args.toTypedArray()) as Int
   }
 }
