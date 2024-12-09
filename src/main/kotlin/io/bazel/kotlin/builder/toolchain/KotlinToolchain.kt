@@ -100,24 +100,15 @@ class KotlinToolchain private constructor(
           kotlinxSerializationJson,
           kotlinxSerializationJsonJvm,
         ),
-        jvmAbiGen = CompilerPlugin(
-          jvmAbiGenFile.toString(),
-          "org.jetbrains.kotlin.jvm.abi",
-        ),
-        skipCodeGen = CompilerPlugin(
-          skipCodeGenFile.toString(),
-          "io.bazel.kotlin.plugin.SkipCodeGen",
-        ),
-        jdepsGen = CompilerPlugin(
-          jdepsGenFile.toString(),
-          "io.bazel.kotlin.plugin.jdeps.JDepsGen",
-        ),
+        jvmAbiGen = CompilerPlugin(jvmAbiGenFile, "org.jetbrains.kotlin.jvm.abi"),
+        skipCodeGen = CompilerPlugin(skipCodeGenFile, "io.bazel.kotlin.plugin.SkipCodeGen"),
+        jdepsGen = CompilerPlugin(jdepsGenFile, "io.bazel.kotlin.plugin.jdeps.JDepsGen"),
         kspSymbolProcessingApi = CompilerPlugin(
-          kspSymbolProcessingApi.toAbsolutePath().toString(),
+          kspSymbolProcessingApi.toAbsolutePath(),
           "com.google.devtools.ksp.symbol-processing",
         ),
         kspSymbolProcessingCommandLine = CompilerPlugin(
-          kspSymbolProcessingCommandLine.toAbsolutePath().toString(),
+          kspSymbolProcessingCommandLine.toAbsolutePath(),
           "com.google.devtools.ksp.symbol-processing",
         ),
       )
@@ -128,7 +119,7 @@ class KotlinToolchain private constructor(
 }
 
 data class CompilerPlugin(
-  @JvmField val jarPath: String,
+  @JvmField val jarPath: Path,
   @JvmField val id: String,
 )
 
