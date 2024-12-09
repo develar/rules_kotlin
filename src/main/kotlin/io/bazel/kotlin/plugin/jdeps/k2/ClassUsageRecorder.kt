@@ -11,20 +11,17 @@ import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.fir.types.forEachType
 import org.jetbrains.kotlin.name.ClassId
-import java.nio.file.Paths
-import java.util.SortedSet
 
-private const val JAR_FILE_SEPARATOR = "!/"
+//private const val JAR_FILE_SEPARATOR = "!/"
 private const val ANONYMOUS = "<anonymous>"
 
-class ClassUsageRecorder(
-  internal val explicitClassesCanonicalPaths: MutableSet<String> = mutableSetOf(),
-  internal val implicitClassesCanonicalPaths: MutableSet<String> = mutableSetOf(),
-  private val seen: MutableSet<ClassId> = mutableSetOf(),
-  private val results: MutableMap<String, SortedSet<String>> = sortedMapOf(),
-  private val rootPath: String = Paths.get("").toAbsolutePath().toString() + "/",
+internal class ClassUsageRecorder(
+//  private val rootPath: String,
 ) {
-  private val javaHome: String by lazy { System.getenv()["JAVA_HOME"] ?: "<not set>" }
+  @JvmField val explicitClassesCanonicalPaths: MutableSet<String> = HashSet()
+  @JvmField val implicitClassesCanonicalPaths: MutableSet<String> = HashSet()
+
+//  private val javaHome: String by lazy { System.getenv()["JAVA_HOME"] ?: "<not set>" }
 
   internal fun recordTypeRef(
     typeRef: FirTypeRef,
@@ -50,7 +47,13 @@ class ClassUsageRecorder(
           if (ANONYMOUS in classId.toString()) return@forEachType
           context.session.symbolProvider
             .getClassLikeSymbolByClassId(classId)
-            ?.let { recordClass(it, context, isExplicit, collectTypeArguments, visited) }
+            ?.let { recordClass(
+              firClass = it,
+              context = context,
+              isExplicit = isExplicit,
+              collectTypeArguments = collectTypeArguments,
+              visited = visited
+            ) }
         },
       )
     } else {
@@ -58,7 +61,13 @@ class ClassUsageRecorder(
         if (!classId.isLocal) {
           context.session.symbolProvider
             .getClassLikeSymbolByClassId(classId)
-            ?.let { recordClass(it, context, isExplicit, collectTypeArguments, visited) }
+            ?.let { recordClass(
+              firClass = it,
+              context = context,
+              isExplicit = isExplicit,
+              collectTypeArguments = false,
+              visited = visited
+            ) }
         }
       }
     }
@@ -69,37 +78,43 @@ class ClassUsageRecorder(
     context: CheckerContext,
     isExplicit: Boolean = true,
     collectTypeArguments: Boolean = true,
-    visited: MutableSet<Pair<ClassId, Boolean>> = mutableSetOf(),
+    visited: MutableSet<Pair<ClassId, Boolean>>,
   ) {
     val classIdAndIsExplicit = firClass.classId to isExplicit
-    if (classIdAndIsExplicit in visited) {
+    if (!visited.add(classIdAndIsExplicit)) {
       return
-    } else {
-      visited.add(classIdAndIsExplicit)
     }
 
-    firClass.sourceElement?.binaryClass()?.let { addFile(it, isExplicit) }
+    firClass.sourceElement?.binaryClass()?.let { recordClass(path = it, isExplicit = isExplicit) }
 
     if (firClass is FirClassSymbol<*>) {
-      firClass.resolvedSuperTypeRefs.forEach {
-        recordTypeRef(it, context, false, collectTypeArguments, visited)
+      for (typeRef in firClass.resolvedSuperTypeRefs) {
+        recordTypeRef(
+          typeRef = typeRef,
+          context = context,
+          isExplicit = false,
+          collectTypeArguments = collectTypeArguments,
+          visited = visited,
+        )
       }
       if (collectTypeArguments) {
         firClass.typeParameterSymbols
+          .asSequence()
           .flatMap { it.resolvedBounds }
-          .forEach { recordTypeRef(it, context, isExplicit, collectTypeArguments, visited) }
+          .forEach {
+            recordTypeRef(
+              typeRef = it,
+              context = context,
+              isExplicit = isExplicit,
+              collectTypeArguments = true,
+              visited = visited,
+            )
+          }
       }
     }
   }
 
   internal fun recordClass(
-    binaryClass: String,
-    isExplicit: Boolean = true,
-  ) {
-    addFile(binaryClass, isExplicit)
-  }
-
-  private fun addFile(
     path: String,
     isExplicit: Boolean,
   ) {
@@ -109,18 +124,18 @@ class ClassUsageRecorder(
       implicitClassesCanonicalPaths.add(path)
     }
 
-    if (path.contains(JAR_FILE_SEPARATOR) && !path.contains(javaHome)) {
-      val (jarPath, classPath) = path.split(JAR_FILE_SEPARATOR)
-      // Convert jar files in current directory to relative paths. Remaining absolute are outside
-      // of project and should be ignored
-      val relativizedJarPath = Paths.get(jarPath.replace(rootPath, ""))
-      if (!relativizedJarPath.isAbsolute) {
-        val occurrences =
-          results.computeIfAbsent(relativizedJarPath.toString()) { sortedSetOf<String>() }
-        if (!isJvmClass(classPath)) {
-          occurrences.add(classPath)
-        }
-      }
-    }
+//    if (path.contains(JAR_FILE_SEPARATOR) && !path.contains(javaHome)) {
+//      val (jarPath, classPath) = path.split(JAR_FILE_SEPARATOR)
+//      // Convert jar files in current directory to relative paths. Remaining absolute are outside
+//      // of project and should be ignored
+//      val relativizedJarPath = Paths.get(jarPath.replace(rootPath, ""))
+//      if (!relativizedJarPath.isAbsolute) {
+//        val occurrences =
+//          results.computeIfAbsent(relativizedJarPath.toString()) { sortedSetOf<String>() }
+//        if (!isJvmClass(classPath)) {
+//          occurrences.add(classPath)
+//        }
+//      }
+//    }
   }
 }

@@ -30,8 +30,8 @@ private class JdepsGenExtension2(
 ) : BaseJdepsGenExtension(configuration), ClassFileFactoryFinalizerExtension {
   override fun finalizeClassFactory(factory: ClassFileFactory) {
     onAnalysisCompleted(
-      classUsageRecorder.explicitClassesCanonicalPaths,
-      classUsageRecorder.implicitClassesCanonicalPaths,
+      explicitClassesCanonicalPaths = classUsageRecorder.explicitClassesCanonicalPaths,
+      implicitClassesCanonicalPaths = classUsageRecorder.implicitClassesCanonicalPaths,
     )
   }
 }

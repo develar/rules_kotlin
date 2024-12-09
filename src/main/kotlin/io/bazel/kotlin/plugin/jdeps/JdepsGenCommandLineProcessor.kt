@@ -10,7 +10,7 @@ import org.jetbrains.kotlin.config.CompilerConfigurationKey
 @OptIn(org.jetbrains.kotlin.compiler.plugin.ExperimentalCompilerApi::class)
 class JdepsGenCommandLineProcessor : CommandLineProcessor {
   companion object {
-    val COMPILER_PLUGIN_ID = "io.bazel.kotlin.plugin.jdeps.JDepsGen"
+    const val COMPILER_PLUGIN_ID = "io.bazel.kotlin.plugin.jdeps.JDepsGen"
 
     val OUTPUT_JDEPS_FILE_OPTION: CliOption =
       CliOption("output", "<path>", "Output path for generated jdeps", required = true)
@@ -31,8 +31,7 @@ class JdepsGenCommandLineProcessor : CommandLineProcessor {
   override val pluginId: String
     get() = COMPILER_PLUGIN_ID
   override val pluginOptions: Collection<AbstractCliOption>
-    get() =
-      listOf(
+    get() = listOf(
         OUTPUT_JDEPS_FILE_OPTION,
         TARGET_LABEL_OPTION,
         DIRECT_DEPENDENCIES_OPTION,
