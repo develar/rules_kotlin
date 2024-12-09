@@ -505,8 +505,12 @@ def kt_jvm_produce_jar_actions(ctx, rule_kind):
 
     compile_jar = ctx.actions.declare_file(ctx.label.name + ".abi.jar")
 
+    # merge outputs into final runtime jar
+    output_jar = ctx.actions.declare_file(ctx.label.name + ".jar")
+
     outputs_struct = _run_kt_java_builder_actions(
         ctx = ctx,
+        output_jar = output_jar,
         rule_kind = rule_kind,
         toolchains = toolchains,
         srcs = srcs,
@@ -524,12 +528,11 @@ def kt_jvm_produce_jar_actions(ctx, rule_kind):
     generated_src_jars = outputs_struct.generated_src_jars
     annotation_processing = outputs_struct.annotation_processing
 
-    # merge outputs into final runtime jar
-    output_jar = ctx.actions.declare_file(ctx.label.name + ".jar")
     if len(output_jars) == 1:
         ctx.actions.symlink(output = output_jar, target_file = output_jars[0])
     elif len(output_jars) == 0:
-        ctx.actions.symlink(output = output_jar, target_file = toolchain.empty_jar)
+        if not srcs.kt:
+            ctx.actions.symlink(output = output_jar, target_file = toolchain.empty_jar)
     else:
         _fold_jars_action(
             ctx,
@@ -622,11 +625,6 @@ def _get_or_create_single_jdeps_output(toolchain, java_infos, ctx, compile_deps)
 
 def _compile_java_sources(ctx, srcs, generated_ksp_src_jars, compile_deps, kt_stubs_for_java, toolchains, strict_deps):
     """Compiles Java sources if present, otherwise uses KT ABI jar."""
-    has_java_sources = srcs.java or srcs.src_jars or (generated_ksp_src_jars and is_ksp_processor_generating_java(ctx.attr.plugins))
-
-    if not has_java_sources:
-        # no sources to compile, return early
-        return None
 
     javac_options = javac_options_to_flags(
         ctx.attr.javac_opts[JavacOptions] if ctx.attr.javac_opts else toolchains.kt.javac_options,
@@ -641,7 +639,7 @@ def _compile_java_sources(ctx, srcs, generated_ksp_src_jars, compile_deps, kt_st
         source_files = srcs.java,
         source_jars = srcs.src_jars + generated_ksp_src_jars,
         output = ctx.actions.declare_file(ctx.label.name + "-java.jar"),
-        deps = compile_deps.deps + kt_stubs_for_java,
+        deps = compile_deps.deps + [kt_stubs_for_java],
         java_toolchain = toolchains.java,
         plugins = _plugin_mappers.targets_to_annotation_processors_java_plugin_info(ctx.attr.plugins) if hasattr(ctx.attr, "plugins") else [],
         javac_opts = javac_options,
@@ -653,6 +651,7 @@ def _compile_java_sources(ctx, srcs, generated_ksp_src_jars, compile_deps, kt_st
 
 def _run_kt_java_builder_actions(
         ctx,
+        output_jar,
         rule_kind,
         toolchains,
         srcs,
@@ -672,7 +671,6 @@ def _run_kt_java_builder_actions(
     """
     compile_jars = []
     output_jars = []
-    kt_stubs_for_java = []
     has_kt_sources = srcs.kt or srcs.src_jars
 
     # run KSP
@@ -697,9 +695,15 @@ def _run_kt_java_builder_actions(
 
     toolchain = toolchains.kt
 
+    kt_stubs_for_java = None
+    has_java_sources = srcs.java or srcs.src_jars or (generated_ksp_src_jars and is_ksp_processor_generating_java(ctx.attr.plugins))
+
     # build Kotlin
     if has_kt_sources:
-        kt_runtime_jar = ctx.actions.declare_file(ctx.label.name + "-kt.jar")
+        kt_runtime_jar = ctx.actions.declare_file(ctx.label.name + "-kt.jar") if has_java_sources else output_jar
+        if kt_runtime_jar != output_jar:
+            output_jars.append(kt_runtime_jar)
+
         if not "kt_abi_plugin_incompatible" in ctx.attr.tags and toolchain.experimental_use_abi_jars == True:
             kt_compile_jar = ctx.actions.declare_file(ctx.label.name + "-kt.abi.jar")
             outputs = {
@@ -735,9 +739,8 @@ def _run_kt_java_builder_actions(
         )
 
         compile_jars.append(kt_compile_jar)
-        output_jars.append(kt_runtime_jar)
         if not annotation_processors or not srcs.kt:
-            kt_stubs_for_java.append(JavaInfo(compile_jar = kt_compile_jar, output_jar = kt_runtime_jar, neverlink = True))
+            kt_stubs_for_java = JavaInfo(compile_jar = kt_compile_jar, output_jar = kt_runtime_jar, neverlink = True)
 
         kt_java_info = JavaInfo(
             output_jar = kt_runtime_jar,
@@ -758,7 +761,7 @@ def _run_kt_java_builder_actions(
         kt_stubs_for_java = kt_stubs_for_java,
         toolchains = toolchains,
         strict_deps = toolchain.experimental_strict_kotlin_deps,
-    )
+    ) if has_java_sources else None
 
     ap_generated_src_jar = None
     if java_part_java_info:
