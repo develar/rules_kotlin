@@ -17,7 +17,6 @@ load("@io_bazel_stardoc//:setup.bzl", "stardoc_repositories")
 load("@released_rules_kotlin//src/main/starlark/core/repositories:initialize.bzl", release_kotlin_repositories = "kotlin_repositories")
 load("@rules_jvm_external//:defs.bzl", "maven_install")
 load("@rules_pkg//:deps.bzl", "rules_pkg_dependencies")
-load("@rules_proto//proto:repositories.bzl", "rules_proto_dependencies", "rules_proto_toolchains")
 
 def kt_configure():
     """Setup dependencies. Must be called AFTER kt_download_local_dev_dependencies() """
@@ -63,9 +62,6 @@ def kt_configure():
             "https://repo1.maven.org/maven2",
         ],
     )
-
-    rules_proto_dependencies()
-    rules_proto_toolchains()
 
     rules_pkg_dependencies()
 

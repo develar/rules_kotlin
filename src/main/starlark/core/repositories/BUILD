@@ -34,12 +34,3 @@ release_archive(
         "//src/main/starlark/core/repositories/kotlin:pkg",
     ],
 )
-
-bzl_library(
-    name = "repositories",
-    srcs = glob(["*.bzl"]),
-    visibility = ["//:__subpackages__"],
-    deps = [
-        "@rules_proto//proto:defs",
-    ],
-)
