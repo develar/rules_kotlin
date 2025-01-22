@@ -78,40 +78,6 @@ def _write_launcher_action(ctx, rjars, main_class, jvm_flags):
     if getattr(java_runtime, "version", 0) >= 17:
         jvm_flags = jvm_flags + " -Djava.security.manager=allow"
 
-    if ctx.configuration.coverage_enabled:
-        jacocorunner = ctx.toolchains[_TOOLCHAIN_TYPE].jacocorunner
-        classpath = ctx.configuration.host_path_separator.join(
-            ["${RUNPATH}%s" % (j.short_path) for j in rjars.to_list() + jacocorunner.files.to_list()],
-        )
-        jacoco_metadata_file = ctx.actions.declare_file(
-            "%s.jacoco_metadata.txt" % ctx.attr.name,
-            sibling = ctx.outputs.executable,
-        )
-        ctx.actions.write(jacoco_metadata_file, "\n".join([
-            jar.short_path.replace("../", "external/")
-            for jar in rjars.to_list()
-        ]))
-        ctx.actions.expand_template(
-            template = template,
-            output = ctx.outputs.executable,
-            substitutions = {
-                "%classpath%": classpath,
-                "%runfiles_manifest_only%": "",
-                "%java_start_class%": "com.google.testing.coverage.JacocoCoverageRunner",
-                "%javabin%": "JAVABIN=" + java_bin_path,
-                "%jvm_flags%": jvm_flags,
-                "%set_jacoco_metadata%": "export JACOCO_METADATA_JAR=\"$JAVA_RUNFILES/{}/{}\"".format(ctx.workspace_name, jacoco_metadata_file.short_path),
-                "%set_jacoco_main_class%": """export JACOCO_MAIN_CLASS={}""".format(main_class),
-                "%set_jacoco_java_runfiles_root%": """export JACOCO_JAVA_RUNFILES_ROOT=$JAVA_RUNFILES/{}/""".format(ctx.workspace_name),
-                "%set_java_coverage_new_implementation%": """export JAVA_COVERAGE_NEW_IMPLEMENTATION=YES""",
-                "%workspace_prefix%": ctx.workspace_name + "/",
-                "%test_runtime_classpath_file%": "export TEST_RUNTIME_CLASSPATH_FILE=${JAVA_RUNFILES}",
-                "%needs_runfiles%": "0" if _is_absolute(java_bin_path) else "1",
-            },
-            is_executable = True,
-        )
-        return [jacoco_metadata_file]
-
     classpath = ctx.configuration.host_path_separator.join(
         ["${RUNPATH}%s" % (j.short_path) for j in rjars.to_list()],
     )
@@ -220,10 +186,6 @@ def kt_jvm_junit_test_impl(ctx):
     runtime_jars = depset(ctx.files._bazel_test_runner, transitive = [providers.java.transitive_runtime_jars])
 
     coverage_runfiles = []
-    if ctx.configuration.coverage_enabled:
-        jacocorunner = ctx.toolchains[_TOOLCHAIN_TYPE].jacocorunner
-        coverage_runfiles = jacocorunner.files.to_list()
-
     test_class = ctx.attr.test_class
 
     # If no test_class, do a best-effort attempt to infer one.

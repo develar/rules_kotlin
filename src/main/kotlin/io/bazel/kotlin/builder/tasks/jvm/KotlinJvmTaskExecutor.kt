@@ -66,16 +66,6 @@ private fun doCompileKotlin(
 
   val args = baseArgs(task)
   val inputs = task.inputs
-  outputs.jdeps?.let { jdeps ->
-    args.plugin(toolchain.jdepsGen) {
-      flag("output", jdeps.toString())
-      flag("target_label", task.info.label)
-      inputs.directDependencies.forEach {
-        flag("direct_dependencies", it)
-      }
-      flag("strict_kotlin_deps", task.info.strictKotlinDeps)
-    }
-  }
   outputs.jar?.let {
     if (task.friendPaths.isNotEmpty()) {
       @Suppress("SpellCheckingInspection")
@@ -84,11 +74,6 @@ private fun doCompileKotlin(
 
     args.flag("-d", task.directories.classes.toString())
     args.values(task.info.passthroughFlags)
-  }
-  outputs.abiJar?.let { abiJar ->
-    args.plugin(toolchain.jvmAbiGen) {
-      flag("outputDir", task.directories.abiClasses!!.toString())
-    }
   }
 
   if (outputs.jar == null) {
@@ -122,13 +107,7 @@ private fun doExecute(
 ) {
   val outputs = task.outputs
   if (outputs.jar != null) {
-    if (task.instrumentCoverage) {
-      context.execute("create instrumented jar") {
-          createCoverageInstrumentedJar(task)
-      }
-    } else {
-      context.execute("create jar") { createOutputJar(task) }
-    }
+    context.execute("create jar") { createOutputJar(task) }
   }
   if (outputs.abiJar != null) {
     context.execute("create abi jar") {

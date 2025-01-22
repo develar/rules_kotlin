@@ -15,13 +15,11 @@ kt_bootstrap_library(
 kt_bootstrap_binary(
     name = "build",
     data = [
-        "//kotlin/compiler:jvm-abi-gen",
         "//kotlin/compiler:kotlin-annotation-processing",
         "//kotlin/compiler:kotlin-compiler",
         "//kotlin/compiler:kotlin-reflect",
         "//kotlin/compiler:symbol-processing-api",
         "//kotlin/compiler:symbol-processing-cmdline",
-        "//src/main/kotlin:jdeps-gen",
         "//src/main/kotlin:skip-code-gen",
         "//src/main/kotlin/io/bazel/kotlin/compiler:compiler.jar",
         "@com_github_jetbrains_kotlin//:home",
@@ -33,9 +31,7 @@ kt_bootstrap_binary(
         "-D@com_github_jetbrains_kotlinx...serialization-core-jvm=$(rlocationpath @kotlinx_serialization_core_jvm//jar)",
         "-D@com_github_jetbrains_kotlinx...serialization-json=$(rlocationpath @kotlinx_serialization_json//jar)",
         "-D@com_github_jetbrains_kotlinx...serialization-json-jvm=$(rlocationpath @kotlinx_serialization_json_jvm//jar)",
-        "-D@com_github_jetbrains_kotlin...jvm-abi-gen=$(rlocationpath //kotlin/compiler:jvm-abi-gen)",
         "-D@com_github_jetbrains_kotlin...kotlin-compiler=$(rlocationpath //kotlin/compiler:kotlin-compiler)",
-        "-D@rules_kotlin...jdeps-gen=$(rlocationpath //src/main/kotlin:jdeps-gen)",
         "-D@rules_kotlin...skip-code-gen=$(rlocationpath //src/main/kotlin:skip-code-gen)",
         "-D@rules_kotlin...compiler=$(rlocationpath //src/main/kotlin/io/bazel/kotlin/compiler:compiler.jar)",
         "-D@com_github_google_ksp...symbol-processing-api=$(rlocationpath //kotlin/compiler:symbol-processing-api)",
@@ -48,24 +44,5 @@ kt_bootstrap_binary(
     visibility = ["//src:__subpackages__"],
     runtime_deps = [
         ":build_lib",
-        "@bazel_tools//tools/jdk:JacocoCoverage",
     ],
-)
-
-kt_bootstrap_library(
-    name = "merge_jdeps_lib",
-    srcs = ["MergeJdeps.kt"],
-    visibility = ["//src:__subpackages__"],
-    deps = [
-        "//src/main/kotlin/io/bazel/kotlin/builder/tasks",
-        "//src/main/kotlin/io/bazel/kotlin/builder/toolchain",
-        "//src/main/kotlin/io/bazel/worker",
-    ],
-)
-
-java_binary(
-    name = "merge_jdeps",
-    main_class = "io.bazel.kotlin.builder.cmd.MergeJdeps",
-    visibility = ["//src:__subpackages__"],
-    runtime_deps = [":merge_jdeps_lib"],
 )

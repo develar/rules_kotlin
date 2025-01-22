@@ -52,8 +52,7 @@ public final class KotlinJvmTestBuilder extends KotlinAbstractTestBuilder<JvmCom
     KOTLIN_ANNOTATIONS = Dep.fromLabel("//kotlin/compiler:annotations"),
     KOTLIN_STDLIB = Dep.fromLabel("//kotlin/compiler:kotlin-stdlib"),
     KOTLIN_STDLIB_JDK7 = Dep.fromLabel("//kotlin/compiler:kotlin-stdlib-jdk7"),
-    KOTLIN_STDLIB_JDK8 = Dep.fromLabel("//kotlin/compiler:kotlin-stdlib-jdk8"),
-    JVM_ABI_GEN = Dep.fromLabel("//kotlin/compiler:jvm-abi-gen");
+    KOTLIN_STDLIB_JDK8 = Dep.fromLabel("//kotlin/compiler:kotlin-stdlib-jdk8");
   private static KotlinBuilderTestComponent component;
   private final TaskBuilder taskBuilderInstance = new TaskBuilder();
 

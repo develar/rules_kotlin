@@ -54,8 +54,8 @@ maven.install(
     artifacts = [
         "com.google.code.findbugs:jsr305:3.0.2",
         "junit:junit:4.13-beta-3",
-        "com.google.protobuf:protobuf-java:4.29.1",
-        "com.google.protobuf:protobuf-java-util:4.29.1",
+        "com.google.protobuf:protobuf-java:4.29.3",
+        "com.google.protobuf:protobuf-java-util:4.29.3",
         "com.google.truth:truth:0.45",
         "com.google.auto.service:auto-service:1.1.1",
         "com.google.auto.service:auto-service-annotations:1.1.1",

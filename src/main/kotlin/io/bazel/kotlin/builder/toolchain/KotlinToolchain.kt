@@ -26,9 +26,7 @@ import java.nio.file.Path
 
 class KotlinToolchain private constructor(
   private val baseJars: List<Path>,
-  @JvmField val jvmAbiGen: CompilerPlugin,
   @JvmField val skipCodeGen: CompilerPlugin,
-  @JvmField val jdepsGen: CompilerPlugin,
   @JvmField val kspSymbolProcessingApi: CompilerPlugin,
   @JvmField val kspSymbolProcessingCommandLine: CompilerPlugin,
 ) {
@@ -39,10 +37,6 @@ class KotlinToolchain private constructor(
 
     private val SKIP_CODE_GEN_PLUGIN by lazy {
       resolveVerifiedFromProperty("@rules_kotlin...skip-code-gen")
-    }
-
-    private val JDEPS_GEN_PLUGIN by lazy {
-      resolveVerifiedFromProperty("@rules_kotlin...jdeps-gen")
     }
 
     private val KSP_SYMBOL_PROCESSING_API by lazy {
@@ -61,9 +55,7 @@ class KotlinToolchain private constructor(
       return createToolchain(
         kotlinc = resolveVerifiedFromProperty("@com_github_jetbrains_kotlin...kotlin-compiler"),
         compiler = COMPILER,
-        jvmAbiGenFile = resolveVerifiedFromProperty("@com_github_jetbrains_kotlin...jvm-abi-gen"),
         skipCodeGenFile = SKIP_CODE_GEN_PLUGIN,
-        jdepsGenFile = JDEPS_GEN_PLUGIN,
         kspSymbolProcessingApi = KSP_SYMBOL_PROCESSING_API,
         kspSymbolProcessingCommandLine = KSP_SYMBOL_PROCESSING_CMDLINE,
         kotlinxSerializationCoreJvm = resolveVerifiedFromProperty("@com_github_jetbrains_kotlinx...serialization-core-jvm"),
@@ -75,9 +67,7 @@ class KotlinToolchain private constructor(
     fun createToolchain(
       kotlinc: Path,
       compiler: Path,
-      jvmAbiGenFile: Path,
       skipCodeGenFile: Path,
-      jdepsGenFile: Path,
       kspSymbolProcessingApi: Path,
       kspSymbolProcessingCommandLine: Path,
       kotlinxSerializationCoreJvm: Path,
@@ -91,18 +81,14 @@ class KotlinToolchain private constructor(
           // plugins *must* be preloaded. Not doing so causes class conflicts
           // (and a NoClassDef err) in the compiler extension interfaces.
           // This may cause issues in accepting user defined compiler plugins.
-          jvmAbiGenFile,
           skipCodeGenFile,
-          jdepsGenFile,
           kspSymbolProcessingApi,
           kspSymbolProcessingCommandLine,
           kotlinxSerializationCoreJvm,
           kotlinxSerializationJson,
           kotlinxSerializationJsonJvm,
         ),
-        jvmAbiGen = CompilerPlugin(jvmAbiGenFile, "org.jetbrains.kotlin.jvm.abi"),
         skipCodeGen = CompilerPlugin(skipCodeGenFile, "io.bazel.kotlin.plugin.SkipCodeGen"),
-        jdepsGen = CompilerPlugin(jdepsGenFile, "io.bazel.kotlin.plugin.jdeps.JDepsGen"),
         kspSymbolProcessingApi = CompilerPlugin(
           kspSymbolProcessingApi.toAbsolutePath(),
           "com.google.devtools.ksp.symbol-processing",

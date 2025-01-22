@@ -8,7 +8,6 @@ ktlint.check:
 	bazel test //... --test_tag_filters="ktlint" --test_output=errors
 ktlint.fix:
 	bazel run //src/main/kotlin/io/bazel/kotlin/builder/cmd:build_lib_ktlint_fix
-	bazel run //src/main/kotlin/io/bazel/kotlin/builder/cmd:merge_jdeps_lib_ktlint_fix
 	bazel run //src/main/kotlin/io/bazel/kotlin/builder/tasks:tasks_ktlint_fix
 	bazel run //src/main/kotlin/io/bazel/kotlin/builder/toolchain:toolchain_ktlint_fix
 	bazel run //src/main/kotlin/io/bazel/kotlin/builder/utils:utils_ktlint_fix

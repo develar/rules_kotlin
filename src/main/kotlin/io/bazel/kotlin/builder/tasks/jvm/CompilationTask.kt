@@ -18,8 +18,6 @@
 // Provides extensions for the JvmCompilationTask protocol buffer.
 package io.bazel.kotlin.builder.tasks.jvm
 
-import com.google.devtools.build.lib.view.proto.Deps
-import com.google.devtools.build.lib.view.proto.Deps.Dependencies
 import io.bazel.kotlin.builder.toolchain.CompilationTaskContext
 import io.bazel.kotlin.builder.toolchain.KotlinToolchain
 import io.bazel.kotlin.builder.toolchain.KotlincInvoker
@@ -27,7 +25,6 @@ import io.bazel.kotlin.builder.utils.bazelRuleKind
 import io.bazel.kotlin.builder.utils.jars.JarCreator
 import io.bazel.kotlin.builder.utils.partitionJvmSources
 import io.bazel.kotlin.model.JvmCompilationTask
-import java.io.BufferedInputStream
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
@@ -35,7 +32,6 @@ import java.nio.file.StandardCopyOption
 import java.util.stream.Collectors
 import kotlin.io.path.ExperimentalPathApi
 import kotlin.io.path.deleteRecursively
-import kotlin.sequences.plus
 
 private const val API_VERSION_ARG = "-api-version"
 private const val LANGUAGE_VERSION_ARG = "-language-version"
@@ -43,24 +39,7 @@ private const val LANGUAGE_VERSION_ARG = "-language-version"
 private const val MANIFEST_DIR = "META-INF/"
 
 private fun createClasspath(task: JvmCompilationTask): String {
-  if (task.info.reducedClasspathMode != "KOTLINBUILDER_REDUCED") {
-    return task.inputs.classpath.joinToString(File.pathSeparator) { it.toString() }
-  }
-
-  val transitiveDepsForCompile = LinkedHashSet<String>()
-  for (jdepsPath in task.inputs.depsArtifacts) {
-    BufferedInputStream(Files.newInputStream(Path.of(jdepsPath))).use {
-      val deps = Dependencies.parseFrom(it)
-      for (dep in deps.dependencyList) {
-        if (dep.kind == Deps.Dependency.Kind.EXPLICIT) {
-          transitiveDepsForCompile.add(dep.path)
-        }
-      }
-    }
-  }
-
-  return (task.inputs.directDependencies.asSequence() + transitiveDepsForCompile)
-    .joinToString(File.pathSeparator)
+  return task.inputs.classpath.joinToString(File.pathSeparator) { it.toString() }
 }
 
 internal fun baseArgs(
@@ -240,9 +219,6 @@ fun compileKotlin(
 ): List<String> {
   val inputs = compilationTask.inputs
   if (inputs.kotlinSources.isEmpty()) {
-    val depBuilder = Dependencies.newBuilder()
-    depBuilder.ruleLabel = compilationTask.info.label
-    Files.write(compilationTask.outputs.jdeps!!, depBuilder.build().toByteArray())
     return emptyList()
   }
 

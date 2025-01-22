@@ -80,9 +80,7 @@ abstract class KotlinAbstractTestBuilder<T> {
     return KotlinToolchain.Companion.createToolchain(
       Path.of(Deps.Dep.fromLabel("//kotlin/compiler:kotlin-compiler").singleCompileJar()),
       Path.of(Deps.Dep.fromLabel("//src/main/kotlin/io/bazel/kotlin/compiler:compiler.jar").singleCompileJar()),
-      Path.of(Deps.Dep.fromLabel("//kotlin/compiler:jvm-abi-gen").singleCompileJar()),
       Path.of(Deps.Dep.fromLabel("//src/main/kotlin:skip-code-gen").singleCompileJar()),
-      Path.of(Deps.Dep.fromLabel("//src/main/kotlin:jdeps-gen").singleCompileJar()),
       Path.of(Deps.Dep.fromLabel("//kotlin/compiler:symbol-processing-api").singleCompileJar()),
       Path.of(Deps.Dep.fromLabel("//kotlin/compiler:symbol-processing-cmdline").singleCompileJar()),
       Path.of(Deps.Dep.fromLabel("@kotlinx_serialization_core_jvm//jar").singleCompileJar()),

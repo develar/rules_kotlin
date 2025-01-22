@@ -50,37 +50,13 @@ register_toolchains("//:custom_toolchain")
 """
 
 def _kotlin_toolchain_impl(ctx):
-    compile_time_providers = [
-        JavaInfo(
-            output_jar = jar,
-            compile_jar = jar,
-            neverlink = True,
-        )
-        for jar in ctx.files.jvm_stdlibs
-    ]
-    runtime_providers = [
-        JavaInfo(
-            output_jar = jar,
-            compile_jar = jar,
-        )
-        for jar in ctx.files.jvm_runtime
-    ]
-
     toolchain = dict(
         language_version = ctx.attr.language_version,
         api_version = ctx.attr.api_version,
         debug = ctx.attr.debug,
         jvm_target = ctx.attr.jvm_target,
         kotlinbuilder = ctx.attr.kotlinbuilder,
-        builder_args = [
-            "--wrapper_script_flag=--main_advice_classpath=%s" % (
-                ":".join([f.path for f in ctx.files.jvm_stdlibs])
-            ),
-        ],
-        jdeps_merger = ctx.attr.jdeps_merger,
         kotlin_home = ctx.attr.kotlin_home,
-        jvm_stdlibs = java_common.merge(compile_time_providers + runtime_providers),
-        jvm_emit_jdeps = ctx.attr._jvm_emit_jdeps[BuildSettingInfo].value,
         execution_requirements = {
             "supports-workers": "1",
             "supports-multiplex-workers": "1" if ctx.attr.experimental_multiplex_workers else "0",
@@ -93,7 +69,6 @@ def _kotlin_toolchain_impl(ctx):
         kotlinc_options = ctx.attr.kotlinc_options[KotlincOptions] if ctx.attr.kotlinc_options else None,
         empty_jar = ctx.file._empty_jar,
         empty_jdeps = ctx.file._empty_jdeps,
-        jacocorunner = ctx.attr.jacocorunner,
         experimental_prune_transitive_deps = ctx.attr._experimental_prune_transitive_deps[BuildSettingInfo].value,
     )
 
@@ -113,13 +88,6 @@ _kt_toolchain = rule(
         "kotlinbuilder": attr.label(
             doc = "the kotlin builder executable",
             default = Label("//src/main/kotlin:build"),
-            executable = True,
-            allow_files = True,
-            cfg = "exec",
-        ),
-        "jdeps_merger": attr.label(
-            doc = "the jdeps merger executable",
-            default = Label("//src/main/kotlin:jdeps_merger"),
             executable = True,
             allow_files = True,
             cfg = "exec",
@@ -165,11 +133,6 @@ _kt_toolchain = rule(
         ),
         "jvm_runtime": attr.label_list(
             doc = "The implicit jvm runtime libraries. This is internal.",
-            providers = [JavaInfo],
-            cfg = "target",
-        ),
-        "jvm_stdlibs": attr.label_list(
-            doc = "The jvm stdlibs. This is internal.",
             providers = [JavaInfo],
             cfg = "target",
         ),
@@ -248,9 +211,6 @@ _kt_toolchain = rule(
             cfg = "target",
             default = Label("//third_party:empty.jdeps"),
         ),
-        "jacocorunner": attr.label(
-            default = Label("@bazel_tools//tools/jdk:JacocoCoverage"),
-        ),
         "_experimental_prune_transitive_deps": attr.label(
             doc = """If enabled, compilation is performed against only direct dependencies.
             Transitive deps required for compilation must be explicitly added. Using
@@ -294,10 +254,7 @@ def define_kt_toolchain(
         experimental_multiplex_workers = True,
         javac_options = Label("//kotlin/internal:default_javac_options"),
         kotlinc_options = Label("//kotlin/internal:default_kotlinc_options"),
-        jvm_stdlibs = None,
         jvm_runtime = None,
-        jdeps_merger = None,
-        jacocorunner = None,
         exec_compatible_with = None,
         target_compatible_with = None,
         target_settings = None):
@@ -315,7 +272,6 @@ def define_kt_toolchain(
             _NOEXPERIMENTAL_USE_ABI_JARS: False,
             "//conditions:default": experimental_use_abi_jars,
         }),
-        jdeps_merger = jdeps_merger,
         experimental_multiplex_workers = experimental_multiplex_workers,
         experimental_strict_kotlin_deps = experimental_strict_kotlin_deps,
         experimental_report_unused_deps = experimental_report_unused_deps,
@@ -323,13 +279,6 @@ def define_kt_toolchain(
         javac_options = javac_options,
         kotlinc_options = kotlinc_options,
         visibility = ["//visibility:public"],
-        jacocorunner = jacocorunner,
-        jvm_stdlibs = jvm_stdlibs if jvm_stdlibs != None else [
-            Label("//kotlin/compiler:annotations"),
-            Label("//kotlin/compiler:kotlin-stdlib"),
-            Label("//kotlin/compiler:kotlin-stdlib-jdk7"),
-            Label("//kotlin/compiler:kotlin-stdlib-jdk8"),
-        ],
         jvm_runtime = jvm_runtime if jvm_runtime != None else [
             Label("//kotlin/compiler:kotlin-stdlib"),
         ],

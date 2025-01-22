@@ -15,7 +15,6 @@ KOTLINC_ARTIFACTS = struct(
             "parcelize-compiler-plugin": "lib/parcelize-compiler.jar",
         },
         runtime = {
-            "jvm-abi-gen": "lib/jvm-abi-gen.jar",
             "kotlin-stdlib": "lib/kotlin-stdlib.jar",
             "kotlin-stdlib-jdk7": "lib/kotlin-stdlib-jdk7.jar",
             "kotlin-stdlib-jdk7-sources": "lib/kotlin-stdlib-jdk7-sources.jar",

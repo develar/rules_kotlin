@@ -43,7 +43,6 @@ java_library(
     runtime_deps = [
         "//kotlin/compiler:kotlin-reflect",
         "//kotlin/compiler:kotlin-stdlib",
-        "@bazel_tools//tools/jdk:JacocoCoverage",
     ],
     deps = _COMMON_DEPS + [
         "//src/main/kotlin/io/bazel/kotlin/builder/tasks",
