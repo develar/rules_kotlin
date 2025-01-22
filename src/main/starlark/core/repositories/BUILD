@@ -22,7 +22,6 @@ release_archive(
         "BUILD.kotlin_capabilities.bazel",
         "bzlmod_impl.bzl",
         "compiler.bzl",
-        "ksp.bzl",
         "versions.bzl",
     ],
     src_map = {

@@ -59,13 +59,6 @@ versions = struct(
         ],
         sha256 = "b6698d5728ad8f9edcdd01617d638073191d8a03139cc538a391b4e3759ad297",
     ),
-    KSP_CURRENT_COMPILER_PLUGIN_RELEASE = version(
-        version = "2.1.0-1.0.28",
-        url_templates = [
-            "https://github.com/google/ksp/releases/download/{version}/artifacts.zip",
-        ],
-        sha256 = "fc27b08cadc061a4a989af01cbeccb613feef1995f4aad68f2be0f886a3ee251",
-    ),
     # To update: https://github.com/bazelbuild/bazel-toolchains#latest-bazel-and-latest-ubuntu-1604-container
     RBE = struct(
         # This tarball intentionally does not have a SHA256 because the upstream URL can change without notice

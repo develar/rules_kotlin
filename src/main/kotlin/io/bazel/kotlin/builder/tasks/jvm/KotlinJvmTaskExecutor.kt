@@ -41,9 +41,6 @@ class KotlinJvmTaskExecutor(
   ) {
     runPlugins(
       task = task,
-      context = context,
-      plugins = toolchain,
-      compiler = compiler,
     )
     context.execute("compile classes") {
       if (task.compileKotlin) {

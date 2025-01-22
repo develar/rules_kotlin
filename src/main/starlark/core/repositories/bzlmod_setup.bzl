@@ -28,7 +28,7 @@ def _rules_kotlin_extensions_impl(mctx):
             "grep -rl '\"@*{repo}' src kotlin | xargs -I F perl -i -pe 's/\"(@*)({repo})/\"\\1released_\\2/g' F".format(
                 repo = repo,
             )
-            for repo in ["com_github_jetbrains_kotlin", "com_github_google_ksp"]
+            for repo in ["com_github_jetbrains_kotlin"]
         ],
     )
 

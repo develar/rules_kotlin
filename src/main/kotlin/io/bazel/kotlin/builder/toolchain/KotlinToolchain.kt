@@ -27,8 +27,6 @@ import java.nio.file.Path
 class KotlinToolchain private constructor(
   private val baseJars: List<Path>,
   @JvmField val skipCodeGen: CompilerPlugin,
-  @JvmField val kspSymbolProcessingApi: CompilerPlugin,
-  @JvmField val kspSymbolProcessingCommandLine: CompilerPlugin,
 ) {
   companion object {
     private val COMPILER by lazy {
@@ -37,14 +35,6 @@ class KotlinToolchain private constructor(
 
     private val SKIP_CODE_GEN_PLUGIN by lazy {
       resolveVerifiedFromProperty("@rules_kotlin...skip-code-gen")
-    }
-
-    private val KSP_SYMBOL_PROCESSING_API by lazy {
-      resolveVerifiedFromProperty("@com_github_google_ksp...symbol-processing-api")
-    }
-
-    private val KSP_SYMBOL_PROCESSING_CMDLINE by lazy {
-      resolveVerifiedFromProperty("@com_github_google_ksp...symbol-processing-cmdline")
     }
 
     private val KOTLIN_REFLECT by lazy {
@@ -56,8 +46,6 @@ class KotlinToolchain private constructor(
         kotlinc = resolveVerifiedFromProperty("@com_github_jetbrains_kotlin...kotlin-compiler"),
         compiler = COMPILER,
         skipCodeGenFile = SKIP_CODE_GEN_PLUGIN,
-        kspSymbolProcessingApi = KSP_SYMBOL_PROCESSING_API,
-        kspSymbolProcessingCommandLine = KSP_SYMBOL_PROCESSING_CMDLINE,
         kotlinxSerializationCoreJvm = resolveVerifiedFromProperty("@com_github_jetbrains_kotlinx...serialization-core-jvm"),
         kotlinxSerializationJson = resolveVerifiedFromProperty("@com_github_jetbrains_kotlinx...serialization-json"),
         kotlinxSerializationJsonJvm = resolveVerifiedFromProperty("@com_github_jetbrains_kotlinx...serialization-json-jvm"),
@@ -68,8 +56,6 @@ class KotlinToolchain private constructor(
       kotlinc: Path,
       compiler: Path,
       skipCodeGenFile: Path,
-      kspSymbolProcessingApi: Path,
-      kspSymbolProcessingCommandLine: Path,
       kotlinxSerializationCoreJvm: Path,
       kotlinxSerializationJson: Path,
       kotlinxSerializationJsonJvm: Path,
@@ -82,21 +68,11 @@ class KotlinToolchain private constructor(
           // (and a NoClassDef err) in the compiler extension interfaces.
           // This may cause issues in accepting user defined compiler plugins.
           skipCodeGenFile,
-          kspSymbolProcessingApi,
-          kspSymbolProcessingCommandLine,
           kotlinxSerializationCoreJvm,
           kotlinxSerializationJson,
           kotlinxSerializationJsonJvm,
         ),
         skipCodeGen = CompilerPlugin(skipCodeGenFile, "io.bazel.kotlin.plugin.SkipCodeGen"),
-        kspSymbolProcessingApi = CompilerPlugin(
-          kspSymbolProcessingApi.toAbsolutePath(),
-          "com.google.devtools.ksp.symbol-processing",
-        ),
-        kspSymbolProcessingCommandLine = CompilerPlugin(
-          kspSymbolProcessingCommandLine.toAbsolutePath(),
-          "com.google.devtools.ksp.symbol-processing",
-        ),
       )
     }
   }

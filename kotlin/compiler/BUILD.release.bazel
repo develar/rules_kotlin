@@ -14,15 +14,11 @@
 
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 load(":compiler.bzl", "kt_configure_compiler")
-load(":ksp.bzl", "kt_configure_ksp")
 
 package(default_visibility = ["//visibility:public"])
 
 # Configures the compiler
 kt_configure_compiler()
-
-# Configures the KSP plugins
-kt_configure_ksp()
 
 bzl_library(
     name = "compiler",

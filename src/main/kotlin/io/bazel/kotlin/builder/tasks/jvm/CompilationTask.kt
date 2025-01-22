@@ -19,7 +19,6 @@
 package io.bazel.kotlin.builder.tasks.jvm
 
 import io.bazel.kotlin.builder.toolchain.CompilationTaskContext
-import io.bazel.kotlin.builder.toolchain.KotlinToolchain
 import io.bazel.kotlin.builder.toolchain.KotlincInvoker
 import io.bazel.kotlin.builder.utils.bazelRuleKind
 import io.bazel.kotlin.builder.utils.jars.JarCreator
@@ -30,8 +29,6 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
 import java.util.stream.Collectors
-import kotlin.io.path.ExperimentalPathApi
-import kotlin.io.path.deleteRecursively
 
 private const val API_VERSION_ARG = "-api-version"
 private const val LANGUAGE_VERSION_ARG = "-language-version"
@@ -88,109 +85,14 @@ internal fun configurePlugins(
   }
 }
 
-internal fun kspArgs(task: JvmCompilationTask, toolchain: KotlinToolchain): CompilationArgs {
-  val dirs = task.directories
-  val generatedJavaSources = dirs.generatedJavaSources
-  clearDirContent(generatedJavaSources)
-
-  val args = CompilationArgs()
-  args.plugin(toolchain.kspSymbolProcessingCommandLine)
-  args.plugin(toolchain.kspSymbolProcessingApi) {
-    args.flag("-Xallow-no-source-files")
-    val values = arrayOf(
-      "apclasspath" to listOf(task.inputs.processorPaths.joinToString(File.pathSeparator)),
-      // projectBaseDir shouldn't matter because incremental is disabled
-      "projectBaseDir" to listOf(dirs.incrementalData),
-      // Disable incremental mode
-      "incremental" to listOf("false"),
-      // Directory where class files are written to. Files written to this directory are class
-      // files being written directly from the annotation processor, not Kotlinc
-      "classOutputDir" to listOf(dirs.generatedClasses),
-      // Directory where generated Java sources files are written to
-      "javaOutputDir" to listOf(generatedJavaSources),
-      // Directory where generated Kotlin sources files are written to
-      "kotlinOutputDir" to listOf(dirs.generatedSources),
-      // Directory where META-INF data is written to. This might not be the most ideal place to
-      // write this. Maybe just directly to the classes' directory?
-      "resourceOutputDir" to listOf(dirs.generatedSources),
-      // TODO(bencodes) Not sure what this directory is yet.
-      "kspOutputDir" to listOf(dirs.incrementalData),
-      // Directory to write KSP caches. Shouldn't matter because incremental is disabled
-      "cachesDir" to listOf(dirs.incrementalData),
-      // Set withCompilation to false because we run this as part of the standard kotlinc pass
-      // If we ever want to flip this to true, we probably want to integrate this directly
-      // into the KotlinCompile action.
-      "withCompilation" to listOf("false"),
-      // Set returnOkOnError to false because we want to fail the build if there are any errors
-      "returnOkOnError" to listOf("false"),
-      // TODO(bencodes) This should probably be enabled via some KSP options
-      "allWarningsAsErrors" to listOf("false"),
-    )
-
-    for (pair in values) {
-      for (value in pair.second) {
-        args.flag(pair.first, value.toString())
-      }
-    }
-  }
-  return args
-}
-
 internal fun runPlugins(
   task: JvmCompilationTask,
-  context: CompilationTaskContext,
-  plugins: KotlinToolchain,
-  compiler: KotlincInvoker,
 ) {
   val inputs = task.inputs
   if ((inputs.processors.isEmpty() && inputs.stubsPluginClasspath.isEmpty()) ||
     inputs.kotlinSources.isEmpty()) {
     return
   }
-
-  if (task.outputs.generatedKspSrcJar != null) {
-    runKspPlugin(
-      task = task,
-      context = context,
-      toolchain = plugins,
-      compiler = compiler,
-    )
-  }
-}
-
-private fun runKspPlugin(
-  task: JvmCompilationTask,
-  context: CompilationTaskContext,
-  toolchain: KotlinToolchain,
-  compiler: KotlincInvoker,
-) {
-  return context.execute("Ksp (${task.inputs.processors.joinToString(", ")})") {
-    val overrides = mutableMapOf(
-      API_VERSION_ARG to kspKotlinToolchainVersion(task.info.toolchainInfo.apiVersion),
-      LANGUAGE_VERSION_ARG to kspKotlinToolchainVersion(task.info.toolchainInfo.languageVersion),
-    )
-    val args = baseArgs(task, overrides)
-      .plus(kspArgs(task, toolchain))
-      .flag("-d", task.directories.generatedClasses.toString())
-      .values(task.inputs.kotlinSources)
-      .values(task.inputs.javaSources)
-      .toList()
-    val outputLines = context.executeCompilerTask(
-      args = args,
-      compiler = compiler,
-      printOnSuccess = context.isTracing,
-    )
-    // if tracing is enabled, the output should be formatted in a special way, if we aren't
-    // tracing then any compiler output would make it's way to the console as is.
-    context.whenTracing {
-      printLines("Ksp output", outputLines.asSequence())
-    }
-  }
-}
-
-private fun kspKotlinToolchainVersion(version: String): String {
-  // KSP doesn't support Kotlin 2.0 yet, so we need to use 1.9
-  return if (version.toFloat() >= 2.0) "1.9" else version
 }
 
 /**
@@ -307,10 +209,4 @@ private fun filterOutNonCompilableSources(iterator: Iterator<String>): Iterator<
     if (it.endsWith(".kt") or it.endsWith(".java")) result.add(it)
   }
   return result.iterator()
-}
-
-@OptIn(ExperimentalPathApi::class)
-fun clearDirContent(dir: Path) {
-  dir.deleteRecursively()
-  Files.createDirectories(dir)
 }

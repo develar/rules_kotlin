@@ -41,8 +41,6 @@ kt_compiler_plugin(
     },
     visibility = ["//visibility:public"],
     deps = [
-        "@rules_kotlin//kotlin/compiler:symbol-processing-api",
-        "@rules_kotlin//kotlin/compiler:symbol-processing-cmdline",
     ],
 )
 

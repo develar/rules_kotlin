@@ -14,15 +14,11 @@ load("//src/main/starlark/release:packager.bzl", "release_archive")
 # See the License for the specific language governing permissions and
 # limitations under the License.
 load(":compiler.bzl", "kt_configure_compiler")
-load(":ksp.bzl", "kt_configure_ksp")
 
 package(default_visibility = ["//visibility:public"])
 
 # Configures the compiler
 kt_configure_compiler()
-
-# Configures the KSP plugins
-kt_configure_ksp()
 
 release_archive(
     name = "pkg",

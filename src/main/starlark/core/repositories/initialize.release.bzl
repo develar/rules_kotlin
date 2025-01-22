@@ -23,11 +23,9 @@ load(
 load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")
 load(
     "//kotlin/internal:defs.bzl",
-    _KSP_COMPILER_PLUGIN_REPO = "KSP_COMPILER_PLUGIN_REPO",
     _KT_COMPILER_REPO = "KT_COMPILER_REPO",
 )
 load(":compiler.bzl", "kotlin_compiler_repository")
-load(":ksp.bzl", "ksp_compiler_plugin_repository")
 load(":versions.bzl", "version", _versions = "versions")
 
 versions = _versions
@@ -37,9 +35,7 @@ RULES_KOTLIN = Label("//:all")
 def kotlin_repositories(
         is_bzlmod = False,
         compiler_repository_name = _KT_COMPILER_REPO,
-        ksp_repository_name = _KSP_COMPILER_PLUGIN_REPO,
-        compiler_release = versions.KOTLIN_CURRENT_COMPILER_RELEASE,
-        ksp_compiler_release = versions.KSP_CURRENT_COMPILER_PLUGIN_RELEASE):
+        compiler_release = versions.KOTLIN_CURRENT_COMPILER_RELEASE):
     """Call this in the WORKSPACE file to setup the Kotlin rules.
 
     Args:
@@ -47,7 +43,6 @@ def kotlin_repositories(
         compiler_release: version provider from versions.bzl.
         configured_repository_name: for the default versioned kt_* rules repository. If None, no versioned repository is
          created.
-        ksp_compiler_release: (internal) version provider from versions.bzl.
     """
 
     kotlin_compiler_repository(
@@ -55,13 +50,6 @@ def kotlin_repositories(
         urls = [url.format(version = compiler_release.version) for url in compiler_release.url_templates],
         sha256 = compiler_release.sha256,
         compiler_version = compiler_release.version,
-    )
-
-    ksp_compiler_plugin_repository(
-        name = ksp_repository_name,
-        urls = [url.format(version = ksp_compiler_release.version) for url in ksp_compiler_release.url_templates],
-        sha256 = ksp_compiler_release.sha256,
-        strip_version = ksp_compiler_release.version,
     )
 
     maybe(
